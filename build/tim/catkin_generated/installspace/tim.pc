@@ -1,0 +1,6 @@
+Name: tim
+Description: Description of tim
+Version: 0.0.0
+Cflags: -I/home/tim-dev/Dropbox/Workspaces/research/install/include
+Libs: -L/home/tim-dev/Dropbox/Workspaces/research/install/lib 
+Requires: 

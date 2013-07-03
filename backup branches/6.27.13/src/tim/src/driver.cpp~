@@ -1,0 +1,63 @@
+#include <ros/ros.h>
+#include "MessageFetcher.h"
+#include <iostream>
+
+static const std::string kWindow = "output";
+static const std::string kDepthWindow = "Depth";
+static const std::string kSegmentationWindow = "Segmentation";
+
+static const bool kRecord = true;
+
+int main(int argc, char** argv)
+{
+	ros::init(argc, argv, "imageProcessor");
+
+	MessageFetcher ros_handle;
+
+	cv::Mat raw_rgb,raw_depth;
+	
+	bool run = true;
+	
+	//create output writer
+	cv::VideoWriter writer;
+	if(kRecord) writer.open("save.avi",CV_FOURCC('D','I','V','X'),25,cv::Size(640,480),true);
+	while(run) {
+		int i=0;
+		//spin until we get a new frame
+		do {
+			ros::spinOnce();
+			i++;
+		} while(!ros_handle.GetFrame(raw_rgb,raw_depth));
+
+
+		//save the video, if applicable
+		if(kRecord) writer.write(raw_rgb);
+
+		//show the image on screen
+		imshow(kWindow,raw_rgb);
+		char key = cv::waitKey(1);
+		switch(key) {
+		case 'q':
+			cv::destroyAllWindows();
+			run = false;
+			break;
+		}
+	}
+	return 0;
+}
+
+void setupOpencv(cv::Scalar_<int> color, switchValueContainer& switches) {
+	cv::namedWindow(kWindow);
+	cv::namedWindow(kControls);
+	cv::moveWindow(kControls, 0, 500);
+	cv::namedWindow(kSwitches);
+	cv::moveWindow(kSwitches, 100, 500);
+
+	//put stuff on the controls
+	cv::createTrackbar("red",kControls,&(color[0]),255);
+	cv::createTrackbar("green",kControls,&(color[1]),255);
+	cv::createTrackbar("blue",kControls,&(color[2]),255);
+
+	cv::createTrackbar("Depth",kSwitches,&switches.showDepth,1);
+	cv::createTrackbar("Segmentation",kSwitches,&switches.showSegmentation,1);
+}

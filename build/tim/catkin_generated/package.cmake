@@ -1,0 +1,7 @@
+set(_CATKIN_CURRENT_PACKAGE "tim")
+set(tim_MAINTAINER "tim-dev <tim-dev@todo.todo>")
+set(tim_DEPRECATED "")
+set(tim_VERSION "0.0.0")
+set(tim_BUILD_DEPENDS "image_transport" "cv_bridge" "roscpp")
+set(tim_RUN_DEPENDS "image_transport" "cv_bridge" "roscpp")
+set(tim_BUILDTOOL_DEPENDS "catkin")

@@ -1,0 +1,7 @@
+CATKIN_PACKAGE_PREFIX=""
+PROJECT_ABSOLUTE_INCLUDE_DIRS="/home/tim-dev/Dropbox/Workspaces/research/install/include"
+PROJECT_CATKIN_DEPENDS=""
+PKG_CONFIG_LIBRARIES_WITH_PREFIX=""
+PROJECT_NAME="tim"
+PROJECT_SPACE_DIR="/home/tim-dev/Dropbox/Workspaces/research/install"
+PROJECT_VERSION="0.0.0"
