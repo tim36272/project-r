@@ -1,8 +1,0 @@
-do MOG segmentation to get blobs
-describe blobs
-Blobs which meet certain criteria are people and should be tracked
-Keep a list of known people
-Identify blobs from MOG which could be bags
-Associate bag blobs with people
-track people with constraints on where they can be
-Track bag blobs with back projection

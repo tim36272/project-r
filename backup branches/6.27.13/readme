@@ -1,1 +1,0 @@
-Major change: how depth segmentation is handled: use region growing/separating instead of MOG
