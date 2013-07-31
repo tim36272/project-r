@@ -85,6 +85,7 @@ driver_EXTERNAL_OBJECTS =
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: tim/CMakeFiles/driver.dir/src/driver.cpp.o
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: tim/CMakeFiles/driver.dir/build.make
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /home/tim-dev/Dropbox/Workspaces/research/devel/lib/libMessageFetcher.so
+/home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /home/tim-dev/Dropbox/Workspaces/research/devel/lib/libKalman.so
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /home/tim-dev/Dropbox/Workspaces/research/devel/lib/libAnalysis.so
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /opt/ros/groovy/lib/libcv_bridge.so
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /opt/ros/groovy/lib/libopencv_calib3d.so
@@ -127,6 +128,7 @@ driver_EXTERNAL_OBJECTS =
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /usr/lib/x86_64-linux-gnu/libdl.so
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /opt/ros/groovy/lib/libconsole_bridge.so
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /opt/ros/groovy/lib/libroslib.so
+/home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /home/tim-dev/Dropbox/Workspaces/research/devel/lib/libKalman.so
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /home/tim-dev/Dropbox/Workspaces/research/devel/lib/libMessageFetcher.so
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /opt/ros/groovy/lib/libcv_bridge.so
 /home/tim-dev/Dropbox/Workspaces/research/devel/lib/tim/driver: /opt/ros/groovy/lib/libopencv_calib3d.so

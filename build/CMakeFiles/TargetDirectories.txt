@@ -1,4 +1,5 @@
 /home/tim-dev/Dropbox/Workspaces/research/build/tim/CMakeFiles/Analysis.dir
+/home/tim-dev/Dropbox/Workspaces/research/build/tim/CMakeFiles/Kalman.dir
 /home/tim-dev/Dropbox/Workspaces/research/build/tim/CMakeFiles/MessageFetcher.dir
 /home/tim-dev/Dropbox/Workspaces/research/build/CMakeFiles/clean_test_results.dir
 /home/tim-dev/Dropbox/Workspaces/research/build/CMakeFiles/doxygen.dir

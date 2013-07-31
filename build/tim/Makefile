@@ -157,6 +157,20 @@ Analysis/fast:
 .PHONY : Analysis/fast
 
 # Convenience name for target.
+tim/CMakeFiles/Kalman.dir/rule:
+	cd /home/tim-dev/Dropbox/Workspaces/research/build && $(MAKE) -f CMakeFiles/Makefile2 tim/CMakeFiles/Kalman.dir/rule
+.PHONY : tim/CMakeFiles/Kalman.dir/rule
+
+# Convenience name for target.
+Kalman: tim/CMakeFiles/Kalman.dir/rule
+.PHONY : Kalman
+
+# fast build rule for target.
+Kalman/fast:
+	cd /home/tim-dev/Dropbox/Workspaces/research/build && $(MAKE) -f tim/CMakeFiles/Kalman.dir/build.make tim/CMakeFiles/Kalman.dir/build
+.PHONY : Kalman/fast
+
+# Convenience name for target.
 tim/CMakeFiles/MessageFetcher.dir/rule:
 	cd /home/tim-dev/Dropbox/Workspaces/research/build && $(MAKE) -f CMakeFiles/Makefile2 tim/CMakeFiles/MessageFetcher.dir/rule
 .PHONY : tim/CMakeFiles/MessageFetcher.dir/rule
@@ -207,6 +221,30 @@ src/Analysis.s: src/Analysis.cpp.s
 src/Analysis.cpp.s:
 	cd /home/tim-dev/Dropbox/Workspaces/research/build && $(MAKE) -f tim/CMakeFiles/Analysis.dir/build.make tim/CMakeFiles/Analysis.dir/src/Analysis.cpp.s
 .PHONY : src/Analysis.cpp.s
+
+src/Kalman.o: src/Kalman.cpp.o
+.PHONY : src/Kalman.o
+
+# target to build an object file
+src/Kalman.cpp.o:
+	cd /home/tim-dev/Dropbox/Workspaces/research/build && $(MAKE) -f tim/CMakeFiles/Kalman.dir/build.make tim/CMakeFiles/Kalman.dir/src/Kalman.cpp.o
+.PHONY : src/Kalman.cpp.o
+
+src/Kalman.i: src/Kalman.cpp.i
+.PHONY : src/Kalman.i
+
+# target to preprocess a source file
+src/Kalman.cpp.i:
+	cd /home/tim-dev/Dropbox/Workspaces/research/build && $(MAKE) -f tim/CMakeFiles/Kalman.dir/build.make tim/CMakeFiles/Kalman.dir/src/Kalman.cpp.i
+.PHONY : src/Kalman.cpp.i
+
+src/Kalman.s: src/Kalman.cpp.s
+.PHONY : src/Kalman.s
+
+# target to generate assembly for a file
+src/Kalman.cpp.s:
+	cd /home/tim-dev/Dropbox/Workspaces/research/build && $(MAKE) -f tim/CMakeFiles/Kalman.dir/build.make tim/CMakeFiles/Kalman.dir/src/Kalman.cpp.s
+.PHONY : src/Kalman.cpp.s
 
 src/MessageFetcher.o: src/MessageFetcher.cpp.o
 .PHONY : src/MessageFetcher.o
@@ -263,6 +301,7 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... Analysis"
+	@echo "... Kalman"
 	@echo "... MessageFetcher"
 	@echo "... driver"
 	@echo "... edit_cache"
@@ -274,6 +313,9 @@ help:
 	@echo "... src/Analysis.o"
 	@echo "... src/Analysis.i"
 	@echo "... src/Analysis.s"
+	@echo "... src/Kalman.o"
+	@echo "... src/Kalman.i"
+	@echo "... src/Kalman.s"
 	@echo "... src/MessageFetcher.o"
 	@echo "... src/MessageFetcher.i"
 	@echo "... src/MessageFetcher.s"

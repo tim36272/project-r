@@ -17,6 +17,8 @@ opencv2/opencv.hpp
 -
 BlobDescriptor.h
 /home/tim-dev/Dropbox/Workspaces/research/src/tim/src/BlobDescriptor.h
+utilities.cpp
+/home/tim-dev/Dropbox/Workspaces/research/src/tim/src/utilities.cpp
 
 /home/tim-dev/Dropbox/Workspaces/research/src/tim/src/BlobDescriptor.h
 list
@@ -29,6 +31,18 @@ opencv2/highgui/highgui.hpp
 -
 opencv2/opencv.hpp
 -
+Kalman.h
+/home/tim-dev/Dropbox/Workspaces/research/src/tim/src/Kalman.h
+
+/home/tim-dev/Dropbox/Workspaces/research/src/tim/src/Kalman.h
+opencv2/imgproc/imgproc.hpp
+-
+opencv2/highgui/highgui.hpp
+-
+opencv2/opencv.hpp
+-
+utilities.cpp
+/home/tim-dev/Dropbox/Workspaces/research/src/tim/src/utilities.cpp
 
 /home/tim-dev/Dropbox/Workspaces/research/src/tim/src/MessageFetcher.h
 ros/ros.h
@@ -60,6 +74,12 @@ iostream
 string
 -
 fstream
+-
+utilities.cpp
+/home/tim-dev/Dropbox/Workspaces/research/src/tim/src/utilities.cpp
+
+/home/tim-dev/Dropbox/Workspaces/research/src/tim/src/utilities.cpp
+iostream
 -
 
 /opt/ros/groovy/include/XmlRpcDecl.h

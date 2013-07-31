@@ -4,13 +4,14 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include "utilities.cpp"
 
 #define HIST_HSV_H 0
 
 static const std::string kWindow = "output";
 static const std::string kDepthWindow = "depth";
-static const int kFontThickness = 2;
-static const double kFontScale = 0.6;
+static const int kFontThickness = 1;
+static const double kFontScale = 0.4;
 static const std::string kUpperPicker = "Upper Color Picker";
 static const std::string kLowerPicker = "Lower Color Picker";
 
@@ -34,7 +35,6 @@ struct picker_helper {
 void drawBlobs(const std::vector<BlobDescriptor>& blobs,cv::Mat* image, int frame_number);
 int getVideoNumber();
 void displayHistogram(const cv::MatND& histogram,int type);
-cv::Point calcCenter(const cv::Rect& rectangle);
 void SetupPicker(picker_helper* upper,picker_helper* lower);
 static void UpperPickerCallback( int event, int x, int y, int, void* );
 static void LowerPickerCallback( int event, int x, int y, int, void* );
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 	cv::VideoWriter writer;
 	std::stringstream video_output_name;
 	video_output_name << "saves/save_"<<getVideoNumber()<<".avi";
-	if(kRecord) writer.open(video_output_name.str(),CV_FOURCC('D','I','V','X'),25,cv::Size(640,480),true);
+	if(kRecord) writer.open(video_output_name.str(),CV_FOURCC('D','I','V','X'),15,cv::Size(640,480),true);
 
 	//setup everything
 	picker_helper upper_picker,lower_picker;
@@ -116,40 +116,74 @@ int main(int argc, char** argv)
 void drawBlobs(const std::vector<BlobDescriptor>& blobs,cv::Mat* image, int frame_number) {
 	int blobs_drawn = 0;
 	for(unsigned int blob_index=0;blob_index<blobs.size();blob_index++) {
-		std::stringstream text;
-		text << blob_index;
-		if(blobs[blob_index].last_seen==frame_number) {
-			//show the blob in a separate window
-//			imshow(text.str(),blobs[blob_index].image);
+		// fout the blobs
+		std::stringstream filename1;
+		filename1 << "blob_description/"<<blob_index<<"_image.png";
+		cv::imwrite(filename1.str(),blobs[blob_index].image);
+		std::stringstream filename2;
+		filename2 << "blob_description/" << blob_index<<"_upper.png";
+		cv::imwrite(filename2.str(),blobs[blob_index].upper);
+		std::stringstream filename3;
+		filename3 << "blob_description/"<< blob_index<<"_lower.png";
 
-			//put diagnostic text onscreen
-			cv::Point textOrigin(blobs[blob_index].last_location.x,blobs[blob_index].last_location.y);
-			cv::putText(*image,text.str(),textOrigin,CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(255,0,0),kFontThickness,8);
-			cv::rectangle(*image,blobs[blob_index].last_location,cv::Scalar(blob_index*20%256,blob_index*20%256,blob_index*20%256),1);
-			std::cout<<blob_index<<" history size: "<<blobs[blob_index].history.size()<<std::endl;
-			//draw a line showing bag ownership
+		cv::imwrite(filename3.str(),blobs[blob_index].lower);
+		//if this was seen in the last 3 frames
+//		if((frame_number-blobs[blob_index].last_seen) <= 6){
+			std::stringstream text;
+
+			//if this is a bag
 			if(blobs[blob_index].belongs_to!=-1) {
-				int owner_index = blobs[blob_index].belongs_to;
-				cv::Point owner_center = calcCenter(blobs[owner_index].last_location);
-				cv::Point bag_center = calcCenter(blobs[blob_index].last_location);
 
-				cv::line(*image,owner_center,bag_center,cv::Scalar(255,0,0),2,8);
+				int owner_index = blobs[blob_index].belongs_to;
+				//if the owner is visible
+				if(frame_number-blobs[owner_index].last_seen <=6) {
+					//if the owner is close
+					int max_separation = blobs[blob_index].filter.bounding_rect_estimate().x+blobs[owner_index].filter.bounding_rect_estimate().x;
+
+					cv::Point owner_center = utility::calcCenter(blobs[owner_index].last_location);
+					cv::Point bag_center = utility::calcCenter(blobs[blob_index].last_location);
+					//if the owner has control of the bag
+					if(abs(owner_center.x-bag_center.x) < max_separation) {
+						text << "Bag of person #"<<blobs[blob_index].belongs_to;
+					}
+					//otherwise the owner is unattentive
+					else {
+						text << "Unattended bag of person #"<<blobs[blob_index].belongs_to;
+					}
+
+					//draw the connection
+					cv::line(*image,owner_center,bag_center,cv::Scalar(255,0,0),1,8);
+				}
+				//else owner is not in the frame at all
+				else {
+					//bag abandoned
+						//check if it has been seen more recently than the owner: if so, it is stolen
+						if(blobs[blob_index].last_seen > blobs[owner_index].last_seen) {
+							text << "Stolen bag of person #"<<blobs[blob_index].belongs_to;
+						}
+						else {
+							text << "Abandoned bag of person #"<<blobs[blob_index].belongs_to;
+						}
+				}
+
 			}
+			//else it is a person
+			else {
+
+				text << "Person #"<<blob_index;
+			}
+
+			//draw Kalman estimates
+			cv::Point estimate_origin = blobs[blob_index].filter.bounding_rect_origin();
+			cv::putText(*image,text.str(),estimate_origin,CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,0,255),kFontThickness,8);
+			cv::rectangle(*image,blobs[blob_index].filter.bounding_rect_estimate(),cv::Scalar(0,0,255),1,8);
 
 			//increment counter
 			blobs_drawn++;
-		}
-		//draw Kalman estimates
-		int x = blobs[blob_index].location_estimate.at<float>(0);
-		x -= blobs[blob_index].dimension_estimate.at<float>(0)/2;
-		int y = blobs[blob_index].location_estimate.at<float>(1);
-		y -= blobs[blob_index].dimension_estimate.at<float>(1)/2;
-		cv::Point kalman_estimate_origin(x,y);
-		cv::putText(*image,text.str(),kalman_estimate_origin,CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,0,255),kFontThickness,8);
-		cv::Size kalman_estimate_size(blobs[blob_index].dimension_estimate.at<float>(0),blobs[blob_index].dimension_estimate.at<float>(1));
-		cv::Rect kalman_estimate(kalman_estimate_origin,kalman_estimate_size);
-
-		cv::rectangle(*image,kalman_estimate,cv::Scalar(0,0,255),3,8);
+//		}
+/*		else {
+			std::cout<<"Hasn't been seen in "<<frame_number-blobs[blob_index].last_seen<<std::endl;
+		}*/
 	}
 }
 int getVideoNumber() {
@@ -186,10 +220,6 @@ void displayHistogram(const cv::MatND& histogram,int type) {
 	imshow("histogram",image);
 }
 
-cv::Point calcCenter(const cv::Rect& rectangle) {
-	cv::Point center(rectangle.x+rectangle.width/2,rectangle.y+rectangle.height/2);
-	return center;
-}
 void SetupPicker(picker_helper* upper,picker_helper* lower) {
 	cv::namedWindow(kUpperPicker,CV_WINDOW_AUTOSIZE);
 	cv::namedWindow(kLowerPicker,CV_WINDOW_AUTOSIZE);

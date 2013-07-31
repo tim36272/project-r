@@ -234,6 +234,19 @@ Analysis/fast:
 .PHONY : Analysis/fast
 
 #=============================================================================
+# Target rules for targets named Kalman
+
+# Build rule for target.
+Kalman: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 Kalman
+.PHONY : Kalman
+
+# fast build rule for target.
+Kalman/fast:
+	$(MAKE) -f tim/CMakeFiles/Kalman.dir/build.make tim/CMakeFiles/Kalman.dir/build
+.PHONY : Kalman/fast
+
+#=============================================================================
 # Target rules for targets named MessageFetcher
 
 # Build rule for target.
@@ -278,6 +291,7 @@ help:
 	@echo "... gtest"
 	@echo "... gtest_main"
 	@echo "... Analysis"
+	@echo "... Kalman"
 	@echo "... MessageFetcher"
 	@echo "... driver"
 .PHONY : help

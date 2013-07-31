@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "BlobDescriptor.h"
+#include "utilities.cpp"
 
 typedef std::vector<std::vector<cv::Point> > RegionList;
 
@@ -37,6 +38,9 @@ class Analysis {
 		void LookForBags(std::vector<BlobDescriptor>* blobs);
 		bool AreClose(const cv::Rect& lhs, const cv::Rect& rhs);
 		void UpdateAllKalmans(std::vector<BlobDescriptor>* blobs);
+		void TrimList(std::vector<BlobDescriptor>* blobs);
+		bool CheckForStrongRelation(double relation);
+		bool CheckForWeakRelation(double relation);
 
 		int frame_number_;
 		cv::BackgroundSubtractorMOG2 color_segmentation_, depth_segmentation_;
