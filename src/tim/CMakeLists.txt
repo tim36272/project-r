@@ -138,6 +138,10 @@ add_library(Kalman src/Kalman.cpp)
 target_link_libraries(Kalman ${catkin_LIBRARIES})
 link_libraries(Kalman)
 
+add_library(BlobDescriptor src/BlobDescriptor.cpp)
+target_link_libraries(BlobDescriptor ${catkin_LIBRARIES})
+link_libraries(BlobDescriptor)
+
 
 add_library(Analysis src/Analysis.cpp)
 target_link_libraries(Analysis ${catkin_LIBRARIES})

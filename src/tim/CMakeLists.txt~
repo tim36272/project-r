@@ -134,6 +134,10 @@ add_library(MessageFetcher src/MessageFetcher.cpp)
 target_link_libraries(MessageFetcher ${catkin_LIBRARIES})
 link_libraries(MessageFetcher)
 
+add_library(Kalman src/Kalman.cpp)
+target_link_libraries(Kalman ${catkin_LIBRARIES})
+link_libraries(Kalman)
+
 
 add_library(Analysis src/Analysis.cpp)
 target_link_libraries(Analysis ${catkin_LIBRARIES})

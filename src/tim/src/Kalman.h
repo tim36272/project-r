@@ -1,8 +1,9 @@
+#ifndef TIM_SRC_KALMAN_H
+#define TIM_SRC_KALMAN_H
+
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
-
-#include "utilities.cpp"
 
 class Kalman {
 public:
@@ -29,3 +30,5 @@ private:
 	cv::Mat location_estimate_,dimension_estimate_;
 	cv::Rect bounding_rect_estimate_;
 };
+
+#endif

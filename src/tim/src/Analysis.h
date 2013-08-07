@@ -27,20 +27,14 @@ class Analysis {
 		void GetRegions(RegionList* regions);
 		void FindDepthMaskContours(const cv::Mat& depth_masked,RegionList* regions);
 		void MakeAMatWithOneBlob(const RegionList& regions, const cv::Mat& color_raw, int region_index,cv::Mat* image);
-		double CompareBlobs(const BlobDescriptor& first, const BlobDescriptor& second);
-		void ComputeHistogram(const cv::Mat& image, cv::MatND* histogram);
-		void ComputeBackProjection ( const BlobDescriptor& blob , cv::MatND* back_projection);
 		void MakeNewBlobDescriptor(const RegionList& regions ,int blob_index, BlobDescriptor* blob);
 		void AnalyzeRegions(const RegionList& regions,std::vector<BlobDescriptor>* current_blobs);
 		void RegisterBlobs(const std::vector<BlobDescriptor>& current_blobs, std::vector<BlobDescriptor>* known_blobs);
 		bool RegisterMoving(const BlobDescriptor& current_blob, BlobDescriptor* known_blob);
 		void RegisterBags(std::vector<BlobDescriptor>* blobs);
-		void LookForBags(std::vector<BlobDescriptor>* blobs);
-		bool AreClose(const cv::Rect& lhs, const cv::Rect& rhs);
+		void IdentifyBagBlobs(std::vector<BlobDescriptor>* blobs);
 		void UpdateAllKalmans(std::vector<BlobDescriptor>* blobs);
 		void TrimList(std::vector<BlobDescriptor>* blobs);
-		bool CheckForStrongRelation(double relation);
-		bool CheckForWeakRelation(double relation);
 
 		int frame_number_;
 		cv::BackgroundSubtractorMOG2 color_segmentation_, depth_segmentation_;
