@@ -24,6 +24,8 @@ class MessageFetcher
 
 		bool raw_updated_,depth_updated_;
 		void convertMsgToCvImagePtr(const sensor_msgs::ImageConstPtr& msg, cv_bridge::CvImagePtr& raw_ptr);
+
+		int depth_sequence_number_,color_sequence_number_;
 	public:
 		bool GetFrame(cv::Mat& rgb_frame, cv::Mat& depth_frame);
 		MessageFetcher();

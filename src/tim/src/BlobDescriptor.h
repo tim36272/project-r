@@ -12,20 +12,29 @@
 
 #define NO_OWNER -1
 
-struct PositionDescriptor {
+class HistoryDescriptor {
+public:
 	cv::Rect position;
-	int timestamp;
+
+	friend std::ostream& operator<<(std::ostream& out,HistoryDescriptor &object) {
+		out<<object.position;
+		return out;
+	}
 };
 
 class BlobDescriptor {
 public:
-	cv::MatND upper,lower;
+	cv::MatND upper_histogram,lower_histogram,upper_last_histogram,lower_last_histogram;
 	int last_seen;
 	int first_seen;
 	cv::Rect last_location;
-	std::list<PositionDescriptor> history;
+	std::map<int,HistoryDescriptor> history;
 	cv::Mat image;
 	cv::Mat upper_hue_plane,lower_hue_plane;
+	int observation_count;
+	double relation_mean;
+	double relation_variance;
+	double last_relation;
 	int belongs_to;
 	Kalman filter;
 	cv::Moments moments_;

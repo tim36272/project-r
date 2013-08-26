@@ -2,7 +2,7 @@
 
 #define HISTOGRAM_COMPARE_METHOD CV_COMP_CHISQR
 
-static const int kMinRegionSize=300;
+static const int kMinRegionSize=1500;
 static const int kSameLocationTimeWindow=5;
 
 
@@ -38,9 +38,6 @@ int Analysis::AddFrame(const cv::Mat &color_raw, const cv::Mat &depth_raw) {
 //		cv::dilate(color_foreground_,color_foreground_,cv::Mat());
 		cv::erode(depth_foreground_,depth_foreground_,cv::Mat());
 
-		imshow("depth_foreground",depth_foreground_);
-		imshow("color_foreground",color_foreground_);
-
 
 	//create a unified foreground
 		combined_foreground_ = depth_foreground_/* & color_foreground_*/;
@@ -61,43 +58,94 @@ void Analysis::GetRegions(RegionList* regions) {
 	cv::findContours(combined_foreground_,*regions,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
 }
 
+void Analysis::CullSmallRegions(RegionList* regions) {
+	for(int region_index=0;region_index<regions->size();region_index++) {
+		if(cv::contourArea((*regions)[region_index])<kMinRegionSize) {
+			regions->erase(regions->begin()+region_index);
+		}
+	}
+}
+
+void Analysis::SplitCollidedRegions(const std::vector<BlobDescriptor>& known_blobs, RegionList* regions) {
+	std::vector<std::vector<int> > collision_candidates;
+	utility::FindCollisionCandidates(known_blobs,&collision_candidates);
+
+	//get new regions which overlap each collision region
+	//the first index in overlapping_regions is the first blob they collide with, the second is a list of regions overlapping those blobs
+	std::vector<std::vector<int> > overlapping_regions;
+	utility::GetOverlappingRegions(collision_candidates,*regions,known_blobs,&overlapping_regions);
+
+	//draw the overlapping regions on a Mat
+	for(int collision_index=0;collision_index<overlapping_regions.size();collision_index++) {
+		cv::Mat this_collision_set(color_raw_.size(),CV_8UC1,cv::Scalar(0));
+		for(int region_index=0;region_index<overlapping_regions[collision_index].size();region_index++) {
+			cv::drawContours(this_collision_set,*regions,overlapping_regions[collision_index][region_index],cv::Scalar(255),-1,8);
+		}
+		//erase the overlapping area
+		for(int second_blob_index=0;second_blob_index<collision_candidates[collision_index].size();second_blob_index++) {
+			int other_blob = collision_candidates[collision_index][second_blob_index];
+			cv::Rect shared = utility::CalculateSharedRect(known_blobs[collision_index].filter.bounding_rect_estimate(),
+														   known_blobs[other_blob].filter.bounding_rect_estimate());
+			cv::rectangle(this_collision_set,shared,cv::Scalar(0),-1,8);
+		}
+
+/*		if(overlapping_regions[collision_index].size()>1) {
+			imshow("colliding_regions",this_collision_set);
+		}*/
+
+		//find contours in the new Mat
+		RegionList new_regions;
+		cv::findContours(this_collision_set,new_regions,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
+		cv::Mat test2(color_raw_.size(),CV_8UC1,cv::Scalar(0));
+		drawContours(test2,new_regions,-1,cv::Scalar(255),-1,8);
+	/*	if(overlapping_regions[collision_index].size()>1) {
+			imshow("found overlap",test2);
+		}*/
+
+		//replace the regions in overlapping_regions with new_regions
+		utility::ReplaceRegions(color_raw_,overlapping_regions[collision_index],new_regions,regions);
+
+		cv::Mat test(color_raw_.size(),CV_8UC1,cv::Scalar(0));
+		drawContours(test,*regions,-1,cv::Scalar(255),-1,8);
+		if(collision_index==0) {
+			imshow("all new contours",test);
+			cv::waitKey(100);
+		}
+	}
+}
+
 //make a vector of BlobDescriptors for all the significant regions found
 void Analysis::AnalyzeRegions(const RegionList& regions,std::vector<BlobDescriptor>* current_blobs) {
 	//compute a histogram for each blob and add it to the current blobs
 	cv::Mat all_contours(color_raw_.size(),CV_8UC3,cv::Scalar(0));
 	for(unsigned int blob_index=0;blob_index<regions.size();blob_index++) {
 		//require a certain size and certain density
-		if(regions[blob_index].size() > kMinRegionSize) {
-			//make a Mat of the contour
+		if(cv::contourArea(regions[blob_index]) > kMinRegionSize) {
+			std::cout<<"area: "<<cv::contourArea(regions[blob_index])<<std::endl;
 			cv::drawContours(all_contours,regions,blob_index,cv::Scalar((blob_index%254)+1,rand()%255,rand()%255),-1,8);
+			//make a Mat of the contour
 			cv::Point mass_center;
 			//if the blob should be split
 			if( utility::IsMassCenterOutsideBlob(regions[blob_index],all_contours,(blob_index%254)+1,&mass_center) ) {
-				//TODO: Make dividing the region in half work better
+
 				RegionList new_blobs;
-				utility::SplitRegion(mass_center,regions[blob_index],&new_blobs);
+				cv::Mat this_contour(color_raw_.size(),CV_8UC1,cv::Scalar(0));
+				cv::drawContours(this_contour,regions,blob_index,cv::Scalar(255),-1,8);
+				cv::circle(this_contour,mass_center,1,cv::Scalar(128),-1,8);
+				utility::SplitRegion(mass_center,this_contour,&new_blobs);
 
-				cv::Rect left_bounding_rect = boundingRect(new_blobs[0]);
-				//compute the histogram for this blob
-				BlobDescriptor left_this_blob;
-				MakeNewBlobDescriptor(new_blobs,0,&left_this_blob);
-				//add the blob to the chain
-				current_blobs->push_back(left_this_blob);
-
-				cv::Rect right_bounding_rect = boundingRect(new_blobs[1]);
-				//compute the histogram for this blob
-				BlobDescriptor right_this_blob;
-				MakeNewBlobDescriptor(new_blobs,1,&right_this_blob);
-				//add the blob to the chain
-				current_blobs->push_back(right_this_blob);
-
-				cv::drawContours(all_contours,new_blobs,0,cv::Scalar((blob_index%254)+1,rand()%255,rand()%255),-1,8);
-				cv::drawContours(all_contours,new_blobs,1,cv::Scalar((blob_index%254)+1,rand()%255,rand()%255),-1,8);
-
-
+				//add however many blobs we came out with to the chain
+				for(int new_blob_index=0;new_blob_index<new_blobs.size();new_blob_index++) {
+					//compute the histogram for this blob
+					BlobDescriptor this_blob;
+					MakeNewBlobDescriptor(new_blobs,new_blob_index,&this_blob);
+					//add the blob to the chain
+					current_blobs->push_back(this_blob);
+					cv::drawContours(all_contours,new_blobs,new_blob_index,cv::Scalar((blob_index%254)+1,rand()%255,rand()%255),-1,8);
+				}
 			}
-			else { //the blob was not split
-				cv::Rect bounding_rect = boundingRect(regions[blob_index]);
+			else { //the blob was not split*/
+				//draw the contours on the information mat
 				//compute the histogram for this blob
 				BlobDescriptor this_blob;
 				MakeNewBlobDescriptor(regions,blob_index,&this_blob);
@@ -110,7 +158,7 @@ void Analysis::AnalyzeRegions(const RegionList& regions,std::vector<BlobDescript
 }
 
 //takes a set of histograms and match them to the known set or add them to the set, updating describing information
-void Analysis::RegisterBlobs(const std::vector<BlobDescriptor>& current_blobs, std::vector<BlobDescriptor>* known_blobs) {
+void Analysis::RegisterBlobs(std::vector<BlobDescriptor>& current_blobs, std::vector<BlobDescriptor>* known_blobs) {
 
 	//for each current blob
 	for(unsigned int current_blob_index=0;current_blob_index<current_blobs.size();current_blob_index++) {
@@ -130,7 +178,7 @@ void Analysis::RegisterBlobs(const std::vector<BlobDescriptor>& current_blobs, s
 	}
 }
 
-bool Analysis::RegisterMoving(const BlobDescriptor& current_blob, BlobDescriptor* known_blob) {
+bool Analysis::RegisterMoving(BlobDescriptor& current_blob, BlobDescriptor* known_blob) {
 	bool blob_set = false;
 	//if the similarity exceeds a threshold then update it
 		//if this blob has already been updated skip it:
@@ -139,6 +187,7 @@ bool Analysis::RegisterMoving(const BlobDescriptor& current_blob, BlobDescriptor
 		}
 		//compare the last updated time to now
 		assert(current_blob.last_seen > (*known_blob).last_seen);
+
 		if((current_blob.last_seen-(*known_blob).last_seen) < kSameLocationTimeWindow){
 			//if it was updated recently then check if it is where the Kalman filter expects it to be
 			if(utility::CheckForInheldRect(current_blob.last_location,(*known_blob).filter.bounding_rect_estimate())) {
@@ -150,8 +199,12 @@ bool Analysis::RegisterMoving(const BlobDescriptor& current_blob, BlobDescriptor
 						return true;
 					}
 				//see if the blob is similar enough to be updated
-				double relation = utility::CompareBlobs((*known_blob), current_blob,HISTOGRAM_COMPARE_METHOD);
-				if(utility::CheckForStrongRelation(relation,HISTOGRAM_COMPARE_METHOD)) {
+				double real_relation;
+				double relation = utility::CompareBlobs((*known_blob), current_blob,HISTOGRAM_COMPARE_METHOD,real_relation);
+				if(utility::CheckForStrongRelation(relation,known_blob->relation_mean,known_blob->relation_variance,HISTOGRAM_COMPARE_METHOD)) {
+					std::cout<<"Updating blob ID "<<known_blob->first_seen<<" at "<<known_blob->filter.bounding_rect_estimate()<<" with new at "<<current_blob.last_location<<std::endl;
+					known_blob->last_relation = real_relation;
+					std::cout<<"Real relation: "<<real_relation<<std::endl;
 					(*known_blob).update(current_blob);
 					blob_set = true;
 				}
@@ -177,8 +230,10 @@ bool Analysis::RegisterMoving(const BlobDescriptor& current_blob, BlobDescriptor
 				bool new_blob_contains_kalman_prediction_center = current_blob.last_location.contains(kalman_center);
 
 				if(last_known_location_contains_new_center || kalman_prediction_contains_new_center || new_blob_contains_kalman_prediction_center) {
-					double relation = utility::CompareBlobs((*known_blob), current_blob,HISTOGRAM_COMPARE_METHOD);
+					double real_relation;
+					double relation = utility::CompareBlobs((*known_blob), current_blob,HISTOGRAM_COMPARE_METHOD,real_relation);
 					if(relation > kMinWeakRelation) {
+						known_blob->last_relation = real_relation;
 						(*known_blob).update(current_blob);
 						blob_set = true;
 					}
@@ -226,30 +281,16 @@ void Analysis::IdentifyBagBlobs(std::vector<BlobDescriptor>* blobs) {
 	}
 }
 
+/*
+ * Name: RegisterBags
+ * Description: used to find bags when they are stale in the MOG2 subtraction
+ *
+ */
 void Analysis::RegisterBags(std::vector<BlobDescriptor>* blobs) {
 	for(unsigned int blob_index=0;blob_index<(*blobs).size();blob_index++) {
-		if((*blobs)[blob_index].belongs_to!=NO_OWNER) {
-			cv::MatND histogram;
-			utility::ComputeBackProjection(color_raw_, (*blobs)[blob_index] , &histogram );
-			//get contours from the back projection
-			cv::Mat bag_foreground;
-			cv::threshold(histogram,bag_foreground,128,255,cv::THRESH_BINARY);
-			cv::dilate(bag_foreground,bag_foreground,cv::Mat());
-			cv::erode(bag_foreground,bag_foreground,cv::Mat());
-			std::vector<std::vector<cv::Point> > bag_contours;
-			cv::findContours(bag_foreground,bag_contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
-			cv::Mat bag_contour_mat(bag_foreground.size(),CV_8UC3,cv::Scalar(0));
-			for(unsigned int i=0;i<bag_contours.size();i++) {
-				if(bag_contours[i].size()>kMinRegionSize) {
-					//color them and encode their region number into blue and green
-					int blue = i%256;
-					int green = (i/256)%256;
-					cv::Scalar color(blue,green,rand()%256);
-					//draw the contour on the Mat
-					cv::drawContours(bag_contour_mat,bag_contours,i,color,-1);
-				}
-			}
-			imshow("histogram",histogram);
+		//check if this blob is a bag and hasn't been seen in 3 frames
+		if((*blobs)[blob_index].belongs_to!=NO_OWNER && (*blobs)[blob_index].last_seen < (frame_number_-2)) {
+			utility::LookForBagUsingBackProjection(color_raw_, (*blobs)[blob_index]);
 		}
 	}
 }
@@ -270,33 +311,45 @@ void Analysis::TrimList(std::vector<BlobDescriptor>* blobs) {
 		bool not_seen_recently = (frame_number_ - (*blobs)[blob_index].last_seen) == 1;
 		if(rarely_seen && not_seen_recently) {
 			(*blobs).erase(blobs_iterator);
-			std::cout<<"Erased the "<<blob_index<<"element"<<std::endl;
+			ROS_INFO_STREAM("Erased the "<<blob_index<<" element");
 		}
 		blobs_iterator++;
 	}
 }
 
 void Analysis::UpdateBlobs(std::vector<BlobDescriptor>* known_blobs) {
+	std::cout<<"loop"<<std::endl;
 	bool debug = false;
 	RegionList regions;
 	std::vector<BlobDescriptor> blobs;
-										if(debug) std::cout<<"1"<<std::endl;
+										if(debug) ROS_INFO_STREAM("Passed step 1");
 	GetRegions(&regions);
-										if(debug) std::cout<<"2"<<std::endl;
+										if(debug) ROS_INFO_STREAM("Passed step 2");
+	CullSmallRegions(&regions);
+										if(debug) ROS_INFO_STREAM("Passed step 3");
+//	SplitCollidedRegions(*known_blobs,&regions);
+										if(debug) ROS_INFO_STREAM("Passed step 4");
 	AnalyzeRegions(regions,&blobs);
-										if(debug) std::cout<<"3"<<std::endl;
+										if(debug) ROS_INFO_STREAM("Passed step 5");
 	RegisterBlobs(blobs,known_blobs);
-										if(debug) std::cout<<"4"<<std::endl;
+										if(debug) ROS_INFO_STREAM("Passed step 6");
 	IdentifyBagBlobs(known_blobs);
-										if(debug) std::cout<<"5"<<std::endl;
+										if(debug) ROS_INFO_STREAM("Passed step 7");
 	RegisterBags(known_blobs);
-										if(debug) std::cout<<"6"<<std::endl;
+										if(debug) ROS_INFO_STREAM("Passed step 8");
 	//update all Kalmans
 	UpdateAllKalmans(known_blobs);
-										if(debug) std::cout<<"7"<<std::endl;
+										if(debug) ROS_INFO_STREAM("Passed step 9");
 	//cull the list
 	TrimList(known_blobs);
-										if(debug) std::cout<<"8"<<std::endl;
+										if(debug) ROS_INFO_STREAM("Passed step 10");
+
+	//show histograms
+	for(int blob_index=0;blob_index<known_blobs->size();blob_index++) {
+		std::stringstream name;
+		name <<blob_index<<"upper";
+		utility::DisplayHistogram(name.str(),(*known_blobs)[blob_index].upper_histogram);
+	}
 }
 
 /////////////////////// Utilities in this class ///////////////////////////////
@@ -316,13 +369,12 @@ void Analysis::FindDepthMaskContours(const cv::Mat& depth_masked,RegionList* reg
 //	cv::threshold(minmax_mask,minmax_mask,0,255,cv::THRESH_BINARY);
 	cv::minMaxLoc(depth_masked,&minVal,&maxVal,&minLoc,&MaxLoc,minmax_mask);
 	if(minVal==maxVal) maxVal++;
-//	std::cout<<"Minval: "<<minVal<<"Maxval: "<<maxVal<<std::endl;
+
 	int histSize = 20;
 	float hist_range[] = {minVal,maxVal};
 	const float* ranges = {hist_range};
 	cv::MatND histogram;
-	cv::calcHist(&depth_masked,1,0,cv::Mat(),histogram,1,&histSize,&ranges,true,false);
-//	std::cout<<"Histogram: "<<std::endl<<histogram<<std::endl;
+//	cv::calcHist(&depth_masked,1,0,cv::Mat(),histogram,1,&histSize,&ranges,true,false);
 	//TODO: get contours from the histogram values via thresholding
 }
 
@@ -347,35 +399,29 @@ void Analysis::MakeAMatWithOneBlob(const RegionList& regions, const cv::Mat& col
  * Name: MakeNewBlobDescriptor
  * Description: Builds a description of a new blob
  */
+
 void Analysis::MakeNewBlobDescriptor(const RegionList& regions, int blob_index, BlobDescriptor* blob) {
 	//TODO: do this using smart pointers to avoid reallocations during STL operations
 	//fill out the data in the blob descriptor
 		//make a Mat with just the color blob
-	cv::Mat this_segment_hsv;
 		MakeAMatWithOneBlob(regions,color_raw_,blob_index,&(blob->image));
 		//copy the color image
-		cv::cvtColor(blob->image,this_segment_hsv,CV_BGR2HSV);
-
-		cv::Size original_size = this_segment_hsv.size();
-			//get a ROI for this segment of the upper 2/5.
+		cv::Size original_size = blob->image.size();
+			//get a ROI for this segment of the upper 1/2
 			//This does not cause a new data allocation except the header
-			cv::Mat upper(this_segment_hsv,cv::Rect(0,0,original_size.width,original_size.height*0.5));
-			std::vector<cv::Mat> upper_planes;
-			cv::split(upper,upper_planes);
-			upper_planes[0].copyTo(blob->upper_hue_plane);
+			cv::Mat upper(blob->image,cv::Rect(0,0,original_size.width,original_size.height*0.5));
+			cv::Mat upper_hsv;
+			cv::cvtColor(upper,upper_hsv,CV_BGR2HSV);
 			//compute the upper histogram
-			utility::ComputeHistogram(upper_planes[0],&(blob->upper));
-			//set the ROI for this segment to the upper 3/5
-			cv::Mat lower(this_segment_hsv,cv::Rect(0,original_size.height*0.5,original_size.width,original_size.height*0.5));
-			std::vector<cv::Mat> lower_planes;
-			cv::split(lower,lower_planes);
-			lower_planes[0].copyTo(blob->lower_hue_plane);
-
-			//compute the upper histogram
-			utility::ComputeHistogram(lower_planes[0],&(blob->lower));
-
+			utility::ComputeHistogram(upper_hsv,&(blob->upper_histogram),utility::MakeBinaryMask(upper));
+			//set the ROI for the lower segment to the lower 1/2
+			cv::Mat lower(blob->image,cv::Rect(0,original_size.height*0.5,original_size.width,original_size.height*0.5));
+			cv::Mat lower_hsv;
+			cv::cvtColor(lower,lower_hsv,CV_BGR2HSV);
+			//compute the lower histogram
+			utility::ComputeHistogram(lower_hsv,&(blob->lower_histogram),utility::MakeBinaryMask(lower));
 		//set last seen time to now
-		blob->last_seen = blob->first_seen = frame_number_;
+		blob->first_seen = blob->last_seen = frame_number_;
 		//set last location
 		blob->last_location = cv::boundingRect(regions[blob_index]);
 		//calculate moment

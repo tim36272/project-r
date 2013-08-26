@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <string>
 #include "utilities.cpp"
 
 #define HIST_HSV_H 0
@@ -18,6 +19,8 @@ static const std::string kLowerPicker = "Lower Color Picker";
 
 
 static const bool kRecord = true;
+static const bool kWriteDatabase = false;
+
 
 
 struct picker_helper {
@@ -33,8 +36,7 @@ struct picker_helper {
 
 
 void drawBlobs(const std::vector<BlobDescriptor>& blobs,cv::Mat* image, int frame_number);
-int getVideoNumber();
-void displayHistogram(const cv::MatND& histogram,int type);
+int getVideoNumber(const char path[]);
 void SetupPicker(picker_helper* upper,picker_helper* lower);
 static void UpperPickerCallback( int event, int x, int y, int, void* );
 static void LowerPickerCallback( int event, int x, int y, int, void* );
@@ -56,12 +58,16 @@ int main(int argc, char** argv)
 	//create output writer
 	cv::VideoWriter writer;
 	std::stringstream video_output_name;
-	video_output_name << "saves/save_"<<getVideoNumber()<<".avi";
+	video_output_name << "saves/save_"<<getVideoNumber("saves/video_number")<<".avi";
 	if(kRecord) writer.open(video_output_name.str(),CV_FOURCC('D','I','V','X'),15,cv::Size(640,480),true);
 
+	//create database writer
+	cv::VideoWriter database_writer;
+	if(kWriteDatabase) writer.open("database/database.avi",CV_FOURCC('D','I','V','X'),15,cv::Size(640,480),true);
+
 	//setup everything
-	picker_helper upper_picker,lower_picker;
-	SetupPicker(&upper_picker,&lower_picker);
+/*	picker_helper upper_picker,lower_picker;
+	SetupPicker(&upper_picker,&lower_picker); */
 
 	std::cout<<"Running"<<std::endl;
 
@@ -76,8 +82,14 @@ int main(int argc, char** argv)
 		//spin until we get a new frame
 		if(!ros_handle.GetFrame(color_raw,depth_raw)) {
 			ros::spinOnce();
+			if(cv::waitKey(1)=='q') {
+				run=false;
+			}
 			continue;
 		}
+		//save the raw video to database, if applicable
+		//Note: this doesn't have annotations
+		if(kWriteDatabase) writer.write(color_raw);
 
 		//add the frame to the segmentation
 		frame_number = analysis_handle.AddFrame(color_raw,depth_raw);
@@ -93,6 +105,7 @@ int main(int argc, char** argv)
 //		FindUserRequest(blobs,upper_picker,lower_picker,&color_raw,frame_number);
 
 		//save the video, if applicable
+		//Note:: this has annotations.
 		if(kRecord) writer.write(color_raw);
 
 		//show the image on screen
@@ -104,11 +117,21 @@ int main(int argc, char** argv)
 		switch(key) {
 		case 'q':
 		case 'Q':
-			cv::destroyAllWindows();
 			run = false;
 			break;
 		}
 	}
+	//cleanup
+	cv::destroyAllWindows();
+
+	//cleanup dirty data
+		//write out blob maps
+		std::ofstream fout;
+		fout.open("database/attributes");
+		fout << blobs.size()<<std::endl;
+		for(int blob_index=0;blob_index<blobs.size();blob_index++) {
+			utility::WriteMap(fout, blobs[blob_index].history);
+		}
 
 	return 0;
 }
@@ -116,17 +139,6 @@ int main(int argc, char** argv)
 void drawBlobs(const std::vector<BlobDescriptor>& blobs,cv::Mat* image, int frame_number) {
 	int blobs_drawn = 0;
 	for(unsigned int blob_index=0;blob_index<blobs.size();blob_index++) {
-		// fout the blobs
-		std::stringstream filename1;
-		filename1 << "blob_description/"<<blob_index<<"_image.png";
-		cv::imwrite(filename1.str(),blobs[blob_index].image);
-		std::stringstream filename2;
-		filename2 << "blob_description/" << blob_index<<"_upper.png";
-		cv::imwrite(filename2.str(),blobs[blob_index].upper);
-		std::stringstream filename3;
-		filename3 << "blob_description/"<< blob_index<<"_lower.png";
-
-		cv::imwrite(filename3.str(),blobs[blob_index].lower);
 		//if this was seen in the last 3 frames
 //		if((frame_number-blobs[blob_index].last_seen) <= 6){
 			std::stringstream text;
@@ -157,13 +169,13 @@ void drawBlobs(const std::vector<BlobDescriptor>& blobs,cv::Mat* image, int fram
 				//else owner is not in the frame at all
 				else {
 					//bag abandoned
-						//check if it has been seen more recently than the owner: if so, it is stolen
-						if(blobs[blob_index].last_seen > blobs[owner_index].last_seen) {
-							text << "Stolen bag of person #"<<blobs[blob_index].belongs_to;
-						}
-						else {
-							text << "Abandoned bag of person #"<<blobs[blob_index].belongs_to;
-						}
+					//check if it has been seen more recently than the owner: if so, it is stolen
+					if(blobs[blob_index].last_seen > blobs[owner_index].last_seen) {
+						text << "Stolen bag of person #"<<blobs[blob_index].belongs_to;
+					}
+					else {
+						text << "Abandoned bag of person #"<<blobs[blob_index].belongs_to;
+					}
 				}
 
 			}
@@ -186,10 +198,10 @@ void drawBlobs(const std::vector<BlobDescriptor>& blobs,cv::Mat* image, int fram
 		}*/
 	}
 }
-int getVideoNumber() {
+int getVideoNumber(const char path[]) {
 	std::ifstream fin;
 	fin.clear();
-	fin.open("saves/video_number");
+	fin.open(path);
 	int number;
 	if(fin.good()) {
 		fin >> number;
@@ -200,24 +212,10 @@ int getVideoNumber() {
 	}
 	std::ofstream fout;
 	fout.clear();
-	fout.open("saves/video_number");
+	fout.open(path);
 	fout << (number+1);
 	fout.close();
 	return number;
-}
-
-void displayHistogram(const cv::MatND& histogram,int type) {
-	std::cout<<histogram.rows<<std::endl<<histogram<<std::endl;
-	cv::Mat image(100,histogram.rows,CV_8UC3);
-	uchar* data = histogram.data;
-	if(type==HIST_HSV_H) {
-		for(int i=0;i<histogram.rows;i++) {
-			cv::line(image,cv::Point(i,99),cv::Point(i,99-*data),cv::Scalar(i,128,128),1,8);
-		data++;
-		}
-	}
-	cv::cvtColor(image,image,CV_RGB2HSV);
-	imshow("histogram",image);
 }
 
 void SetupPicker(picker_helper* upper,picker_helper* lower) {
@@ -296,7 +294,7 @@ void FindUserRequest(const std::vector<BlobDescriptor>& blobs, const picker_help
 				float hist_range[] = {1,180};
 				const float* ranges = {hist_range};
 				cv::calcHist(&upper_planes[0],1,0,cv::Mat(),user_upper,1,&histSize,&ranges,true,false);
-				double relation = cv::compareHist(user_upper,blobs[blob_index].upper,CV_COMP_CORREL);
+				double relation = cv::compareHist(user_upper,blobs[blob_index].upper_histogram,CV_COMP_CORREL);
 				if(relation > 0) {
 					//draw a big elipse around this blob
 					cv::rectangle(*color_raw,blobs[blob_index].last_location,cv::Scalar(255,0,0),5,8);
