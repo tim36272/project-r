@@ -2,6 +2,7 @@
 
 #define R_UPPER_COLOR 0
 #define R_LOWER_COLOR 1
+#define NO_OWNER -1
 
 Analysis::Analysis() {
 	frame_number_ = 0;
@@ -14,7 +15,13 @@ Analysis::Analysis(const std::string& people_topic, const std::string& bags_topi
 	bag_subscription_ = node_handle_.subscribe(bags_topic, 10, &Analysis::BagColorCallback,this);
 	frame_number_ = 0;
 }
+
+void Analysis::dump() {
+	colors_.clear();
+	bag_colors_.clear();
+}
 void Analysis::PersonColorCallback(const dhs::person& msg) {
+	std::cout<<"Analysis caught preson message"<<std::endl;
 	utility::ColorPair temp;
 	temp[0][0] = msg.upper_blue;
 	temp[0][1] = msg.upper_green;
@@ -27,10 +34,11 @@ void Analysis::PersonColorCallback(const dhs::person& msg) {
 	std::cout<<"Added a person"<<std::endl;
 }
 void Analysis::BagColorCallback(const dhs::bag& msg) {
+	std::cout<<"Analysis caught bag message"<<std::endl;
 	cv::Scalar temp;
 	temp[0] = msg.blue;
-	temp[0] = msg.green;
-	temp[0] = msg.red;
+	temp[1] = msg.green;
+	temp[2] = msg.red;
 	bag_colors_.push_back(temp);
 	std::cout<<"Added a bag"<<std::endl;
 }
@@ -55,6 +63,7 @@ if(debug) ROS_INFO_STREAM("Passed step 5");
 	utility::CullList(frame_number_,known_people);
 if(debug) ROS_INFO_STREAM("Passed step 6");
 	utility::CullList(frame_number_,known_bags);
+if(debug) ROS_INFO_STREAM("Passed step 7");
 
 	return frame_number_;
 }
@@ -83,7 +92,6 @@ void Analysis::ScanForNewPeople(const cv::Mat& color_raw, const cv::Mat& hsv_raw
 			for(uint blob_index=0;blob_index<blobs_using_this_color.size();blob_index++) {
 				utility::Pair regions_to_delete = utility::TryToUpdatePerson(frame_number_,upper_regions,lower_regions,&(*known_people)[blobs_using_this_color[blob_index]]);
 				if(!regions_to_delete.Empty()) {
-					std::cout<<"Found person "<<blob_index<<" again"<<std::endl;
 					utility::DeleteRegion(regions_to_delete.values[0],&upper_regions);
 					utility::DeleteRegion(regions_to_delete.values[1],&lower_regions);
 				}
@@ -111,6 +119,7 @@ void Analysis::ScanForNewBags(const cv::Mat& color_raw, const cv::Mat& hsv_raw, 
 	cv::Mat projection;
 	for(uint color_index=0;color_index<bag_colors_.size();color_index++) {
 		utility::GetSpecificColorMap(hsv_raw,bag_colors_[color_index],&projection);
+
 		//get regions in both projections
 			//get a list of possible locations
 			std::vector<cv::Rect> candidate_areas;
@@ -126,11 +135,12 @@ void Analysis::ScanForNewBags(const cv::Mat& color_raw, const cv::Mat& hsv_raw, 
 		if(blobs_using_this_color.size()!=0) {
 			//update those regions
 			for(uint blob_index=0;blob_index<blobs_using_this_color.size();blob_index++) {
+				//get hint of where the the bag might be based on the owner
 				int owner_index= (*known_bags)[blobs_using_this_color[blob_index]].belongs_to;
-				cv::Rect owner_position = known_people[owner_index].filter.bounding_rect();
+				cv::Rect owner_position;
+				if(owner_index!=NO_OWNER && (int(known_people.size())-1)>=owner_index) owner_position = known_people[owner_index].filter.bounding_rect();
 				int region_to_delete = utility::TryToUpdateBag(frame_number_,regions,owner_position,&(*known_bags)[blobs_using_this_color[blob_index]]);
 				if(region_to_delete!=-1) {
-					std::cout<<"Found bag "<<blob_index<<" again"<<std::endl;
 					utility::DeleteRegion(region_to_delete,&regions);
 				}
 			}
@@ -157,7 +167,9 @@ void Analysis::ScanForNewBags(const cv::Mat& color_raw, const cv::Mat& hsv_raw, 
 			}
 			if(!bag_added) {
 				//add orphan bags here
-				int dummy;
+				BagDescriptor bag;
+				utility::NewBag(regions[0],bag_colors_[color_index],frame_number_,0,&bag);
+				known_bags->push_back(bag);
 			}
 		}
 	}

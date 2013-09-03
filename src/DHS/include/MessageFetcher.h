@@ -1,6 +1,8 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
+#include <stereo_msgs/DisparityImage.h>
+#include <sensor_msgs/image_encodings.h>
 //#include <cv_bridge.h>
 
 #include <sensor_msgs/image_encodings.h>
@@ -14,8 +16,8 @@ class MessageFetcher
 		//transport handles
 		ros::NodeHandle nh_;
 		image_transport::ImageTransport it_;
-		image_transport::Subscriber depth_sub_;
-		image_transport::Subscriber rgb_sub_;
+		ros::Subscriber depth_sub_;
+		ros::Subscriber rgb_sub_;
 
 		//pointers to raw Mats
 		cv_bridge::CvImagePtr raw_rgb_ptr_;
@@ -23,6 +25,8 @@ class MessageFetcher
 
 		void depthCb(const sensor_msgs::ImageConstPtr& msg);
 		void rgbCb(const sensor_msgs::ImageConstPtr& msg);
+		void disparityCb(const stereo_msgs::DisparityImageConstPtr& msg);
+
 
 		bool raw_updated_,depth_updated_;
 		void convertMsgToCvImagePtr(const sensor_msgs::ImageConstPtr& msg, cv_bridge::CvImagePtr& raw_ptr);

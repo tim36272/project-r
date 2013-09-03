@@ -5,8 +5,10 @@ OfflineAnalysis::OfflineAnalysis(const std::string& people_topic, const std::str
 	//subscribe to color topics
 	person_subscription_ = node_handle_.subscribe(people_topic, 10, &OfflineAnalysis::PersonColorCallback,this);
 	bag_subscription_ = node_handle_.subscribe(bags_topic, 10, &OfflineAnalysis::BagColorCallback,this);
+	std::cout<<"setup callbacks"<<std::endl;
 }
 void OfflineAnalysis::PersonColorCallback(const dhs::person& msg) {
+	std::cout<<"Caught person message"<<std::endl;
 	utility::ColorPair temp;
 
 	temp[0][0] = msg.upper_blue;
@@ -19,6 +21,7 @@ void OfflineAnalysis::PersonColorCallback(const dhs::person& msg) {
 	people_colors_.push_back(temp);
 }
 void OfflineAnalysis::BagColorCallback(const dhs::bag& msg) {
+	std::cout<<"Caught bag message"<<std::endl;
 	cv::Scalar temp;
 	temp[0] = msg.blue;
 	temp[1] = msg.green;

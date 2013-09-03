@@ -16,7 +16,7 @@ static const int kMaxRegionSplitTimes = 10;
 static const int kMaxRegionCombineTimes = 5;
 
 static const int kMinRegionSize=500;
-static const int kMaxRegionSize=10000;
+static const int kMaxRegionSize=18000;
 
 typedef std::vector<cv::Point> Region;
 typedef std::vector<Region> RegionList;
@@ -55,6 +55,7 @@ namespace utility {
 	void UpdateKalmans(int frame_number, PersonList* known_people);
 	void UpdateKalmans(int frame_number, BagList* known_bags);
 	void AddCurrentProjection(const cv::Scalar& color,const cv::Mat& hsv_raw, cv::Mat* out);
+	bool AreClose(const cv::Rect& lhs, const cv::Rect& rhs);
 
 
 	cv::Point calcCenter(const cv::Rect& rectangle) {
@@ -234,6 +235,61 @@ namespace utility {
 		return cv::Rect(input.x-amount,input.y-amount,input.width+2*amount,input.height+2*amount);
 	}
 
+	bool CheckForHeavySkew(const Region& region) {
+		cv::Moments region_moments;
+		region_moments = cv::moments(region,false);
+		cv::Point2f region_hu_center( region_moments.m10/region_moments.m00 , region_moments.m01/region_moments.m00 );
+		cv::Rect region_bounding_rect = cv::boundingRect(region);
+		int distance_to_right_side,distance_to_left_side;
+		distance_to_right_side = (region_bounding_rect.x+region_bounding_rect.width) - region_hu_center.x;
+		distance_to_left_side = region_hu_center.x-region_bounding_rect.x;
+		//if the distances vary by more than 25% then trim them
+		int tolerance = (distance_to_right_side < distance_to_left_side) ? distance_to_right_side : distance_to_left_side;
+		return (abs(distance_to_left_side-distance_to_right_side) > tolerance);
+	}
+
+	void RemoveHeavySkew(const cv::Size& frame_size,const RegionList& old_regions,int old_region_index,Region* new_region) {
+		cv::Moments region_moments;
+		region_moments = cv::moments(old_regions[old_region_index],false);
+		cv::Point2f region_hu_center( region_moments.m10/region_moments.m00 , region_moments.m01/region_moments.m00 );
+		cv::Rect modified_bounding_rect;
+		int distance_to_right_side,distance_to_left_side;
+		cv::Rect region_bounding_rect = cv::boundingRect(old_regions[old_region_index]);
+		distance_to_right_side = (region_bounding_rect.x+region_bounding_rect.width) - region_hu_center.x;
+		distance_to_left_side = region_hu_center.x-region_bounding_rect.x;
+		//if the distances vary by more than 25% then trim them
+		int tolerance = (distance_to_right_side < distance_to_left_side) ? distance_to_right_side : distance_to_left_side;
+
+		modified_bounding_rect.x = region_hu_center.x-tolerance; // the center minus the shorter distance to Hu center
+		modified_bounding_rect.width = tolerance*2; //the width is twice the shorter distance to hu center
+		modified_bounding_rect.y = region_bounding_rect.y; //just copy y and height from the original bounding rect
+		modified_bounding_rect.height = region_bounding_rect.height;
+		//TODO: modify the above algorithm to also catch vertical displacements
+		//this is hard because we aren't as semetrical vertically as we are horizontally
+
+		//make a mask of the modified rect
+		cv::Mat mask(frame_size,CV_8UC1,cv::Scalar(0));
+		cv::rectangle(mask,modified_bounding_rect,cv::Scalar(255),-1,8);
+		cv::Mat temp_region(frame_size,CV_8UC1,cv::Scalar(0));
+		cv::drawContours(temp_region,old_regions,old_region_index,cv::Scalar(255),-1,8);
+		cv::Mat new_region_mat(frame_size,CV_8UC1,cv::Scalar(0));
+		temp_region.copyTo(new_region_mat,mask);
+		//refind the modified contour
+		RegionList new_region_list;
+		cv::findContours(new_region_mat,new_region_list,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
+		while(new_region_list.size()>1) {
+			int min=99999999,min_at=0;
+			for(int new_region_index=0;new_region_index<new_region_list.size();new_region_index++) {
+				if(cv::contourArea(new_region_list[new_region_index]) < min) {
+					min = cv::contourArea(new_region_list[new_region_index]);
+					min_at = new_region_index;
+				}
+			}
+			new_region_list.erase(new_region_list.begin()+min_at);
+		}
+		(*new_region) = new_region_list[0];
+	}
+
 	void GetSignificantRegions(const cv::Size& frame_size, const std::vector<cv::Rect>& candidate_areas,const cv::Mat& projection,RegionList* regions) {
 		regions->clear();
 		RegionList all_regions;
@@ -250,47 +306,10 @@ namespace utility {
 			if(area > kMinRegionSize) {
 				if(area < kMaxRegionSize) {
 					//calculate the hu moment (mass center) and trim the edges if necessary
-					cv::Moments region_moments;
-					region_moments = cv::moments(all_regions[region_index],false);
-					cv::Point2f region_hu_center( region_moments.m10/region_moments.m00 , region_moments.m01/region_moments.m00 );
-					cv::Rect region_bounding_rect = cv::boundingRect(all_regions[region_index]);
-					int distance_to_right_side,distance_to_left_side;
-					distance_to_right_side = (region_bounding_rect.x+region_bounding_rect.width) - region_hu_center.x;
-					distance_to_left_side = region_hu_center.x-region_bounding_rect.x;
-					//if the distances vary by more than 25% then trim them
-					int tolerance = (distance_to_right_side < distance_to_left_side) ? distance_to_right_side : distance_to_left_side;
-					if(abs(distance_to_left_side-distance_to_right_side) > tolerance) {
-						std::cout<<"This region is heavily skewed"<<std::endl;
-						cv::Rect modified_bounding_rect;
-						modified_bounding_rect.x = region_hu_center.x-tolerance; // the center minus the shorter distance to Hu center
-						modified_bounding_rect.width = tolerance*2; //the width is twice the shorter distance to hu center
-						modified_bounding_rect.y = region_bounding_rect.y; //just copy y and height from the original bounding rect
-						modified_bounding_rect.height = region_bounding_rect.height;
-						std::cout<<"modified rect: "<<modified_bounding_rect<<std::endl;
-						//TODO: modify the above algorithm to also catch vertical displacements
-						//this is hard because we aren't as semetrical vertically as we are horizontally
-
-						//make a mask of the modified rect
-						cv::Mat mask(frame_size,CV_8UC1,cv::Scalar(0));
-						cv::rectangle(mask,modified_bounding_rect,cv::Scalar(255),-1,8);
-						cv::Mat temp_region(frame_size,CV_8UC1,cv::Scalar(0));
-						cv::drawContours(temp_region,all_regions,region_index,cv::Scalar(255),-1,8);
-						cv::Mat new_region_mat(frame_size,CV_8UC1,cv::Scalar(0));
-						temp_region.copyTo(new_region_mat,mask);
-						//refind the modified contour
-						RegionList new_region;
-						cv::findContours(new_region_mat,new_region,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
-						while(new_region.size()>1) {
-							int min=99999999,min_at=0;
-							for(int new_region_index=0;new_region_index<new_region.size();new_region_index++) {
-								if(cv::contourArea(new_region[new_region_index]) < min) {
-									min = cv::contourArea(new_region[new_region_index]);
-									min_at = new_region_index;
-								}
-							}
-							new_region.erase(new_region.begin()+min_at);
-						}
-						regions->push_back(new_region[0]);
+					if(CheckForHeavySkew(all_regions[region_index])) {
+						Region new_region;
+						RemoveHeavySkew(frame_size, all_regions,region_index,&new_region);
+						regions->push_back(new_region);
 					}
 					else {
 						regions->push_back(all_regions[region_index]);
@@ -302,7 +321,6 @@ namespace utility {
 					//show the huge region
 					cv::Mat huge_region(cv::Size(640,480),CV_8UC1,cv::Scalar(0));
 					cv::drawContours(huge_region,all_regions,region_index,cv::Scalar(255),-1,8);
-					imshow("Huge region",huge_region);
 					if(candidate_areas.size()>0) {
 						int old_size = all_regions.size();
 						cv::Mat mask(frame_size,CV_8UC1,cv::Scalar(0));
@@ -315,7 +333,6 @@ namespace utility {
 						cv::drawContours(the_contour,all_regions,region_index,cv::Scalar(255),-1,8);
 						cv::Mat new_regions_mat;
 						the_contour.copyTo(new_regions_mat,mask);
-						imshow("new regions from large region",new_regions_mat);
 						//find regions again
 						RegionList new_regions;
 						cv::findContours(new_regions_mat,new_regions,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
@@ -458,15 +475,7 @@ namespace utility {
 		std::vector<int> upper_candidates,lower_candidates;
 		utility::GetCandidates(upper_regions,utility::UpperHalf(person->filter.bounding_rect()),&upper_candidates);
 		utility::GetCandidates(lower_regions,utility::LowerHalf(person->filter.bounding_rect()),&lower_candidates);
-		//show candidates
-		cv::Mat candidates_1(cv::Size(640,480),CV_8UC3,cv::Scalar(0,0,0));
-		for(uint upper_index=0;upper_index<upper_candidates.size();upper_index++) {
-			cv::drawContours(candidates_1,upper_regions,upper_candidates[upper_index],cv::Scalar(255,0,0),-1,8);
-		}
-		for(uint lower_index=0;lower_index<lower_candidates.size();lower_index++) {
-			cv::drawContours(candidates_1,lower_regions,lower_candidates[lower_index],cv::Scalar(0,255,0),-1,8);
-		}
-		imshow("original candidates",candidates_1);
+
 
 		std::vector<utility::Pair> full_candidates;
 
@@ -483,14 +492,19 @@ namespace utility {
 			return full_candidates[0];
 		}
 		else if(full_candidates.size()>1) {
-			cv::Mat full_candidates_mat(cv::Size(640,480),CV_8UC3,cv::Scalar(0,0,0));
+			//keep the largest one
+			int max_size=0,max_at=0;
 			for(int i=0;i<full_candidates.size();i++) {
-				cv::Scalar color(rand()%255,rand()%255,rand()%255);
-				cv::drawContours(full_candidates_mat,upper_regions,full_candidates[i][0],color,-1,8);
-				cv::drawContours(full_candidates_mat,lower_regions,full_candidates[i][1],color,-1,8);
+				int temp = cv::contourArea(upper_regions[full_candidates[i][0]]);
+				temp 	+= cv::contourArea(lower_regions[full_candidates[i][1]]);
+				if(temp>max_size) {
+					max_size = temp;
+					max_at = i;
+				}
 			}
-			imshow("Full candidates",full_candidates_mat);
-			ROS_ERROR_STREAM("cannot arbitrate "<<full_candidates.size()<<" full candidates");
+			//update from the largest blob
+			UpdatePerson(frame_number, upper_regions[max_at],lower_regions[max_at],person);
+//			ROS_ERROR_STREAM("cannot arbitrate "<<full_candidates.size()<<" full candidates");
 		}
 		return utility::Pair();
 	}
@@ -503,7 +517,7 @@ namespace utility {
 		GetCandidatesFull(regions,bag->filter.bounding_rect(),&candidates);
 
 		//if that list is empty then look around the person
-		if(candidates.size()==0) {
+		if(candidates.size()==0 && owner_location!=cv::Rect()) {
 			//make a rect three times the width of the person
 			cv::Rect search_window(owner_location.x-owner_location.width,
 								   owner_location.y+owner_location.height/2,
@@ -517,7 +531,17 @@ namespace utility {
 			return candidates[0];
 		}
 		else if(candidates.size()>1) {
-			ROS_ERROR_STREAM("cannot arbitrate "<<candidates.size()<<" full candidates");
+			//find the biggest blob
+			int max_size=0,max_at=0;
+			for(int candidate_index=0;candidate_index<candidates.size();candidate_index++) {
+				int area = cv::contourArea(candidates[candidate_index]);
+				if(area > max_size) {
+					max_size = area;
+					max_at = candidate_index;
+				}
+			}
+			//update the bag from the biggest candidate
+			UpdateBag(frame_number, regions[max_at],bag);
 		}
 		return -1;
 	}
@@ -577,6 +601,15 @@ namespace utility {
 
 		*out = *out | projection;
 
+	}
+
+	bool AreClose(const cv::Rect& lhs, const cv::Rect& rhs) {
+		cv::Point lhs_center(lhs.x+lhs.width/2,lhs.y+lhs.height/2);
+		cv::Point rhs_center(rhs.x+rhs.width/2,rhs.y+rhs.height/2);
+		int distance = pow(lhs_center.x-rhs_center.x,2)+pow(lhs_center.y-rhs_center.y,2);
+		distance = sqrt(distance);
+		if(distance < (lhs.width+rhs.width)) return true;
+		else return false;
 	}
 
 }

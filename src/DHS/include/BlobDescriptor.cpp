@@ -12,7 +12,7 @@ void PersonDescriptor::update_kalman(int frame_number) {
 	if(last_seen==frame_number) {
 		filter.update(&last_location);
 	}
-	else {// if(frame_number-last_seen < 4) {
+	else if(frame_number-last_seen < 10) {
 		filter.update(NULL);
 	}
 }

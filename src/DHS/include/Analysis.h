@@ -25,6 +25,7 @@ class Analysis {
 		int Update(const cv::Mat& color_raw, const cv::Mat& depth_raw, PersonList* known_people, BagList* known_bags);
 		utility::ColorPairListType colors_;
 		utility::ColorSingleListType bag_colors_;
+		void dump();
 
 	private:
 		void ScanForNewPeople(const cv::Mat& color_raw, const cv::Mat& hsv_raw, const cv::Mat& depth_raw, PersonList* known_people);

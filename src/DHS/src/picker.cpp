@@ -97,11 +97,10 @@ if(SHOW_DEPTH)	cv::namedWindow(kDepth,CV_WINDOW_AUTOSIZE);
 //			cv::rectangle(color_raw,cv::Point(600,282),cv::Point(680,400),cv::Scalar(0,0,0),-1,8);
 			data.image = color_raw;
 			if(SHOW_DEPTH) {
-				depth_raw.convertTo(depth_raw,CV_8U,255./9000.);
-				imshow("depth raw",depth_raw);
+				depth_raw.convertTo(depth_raw,CV_8U,255./60.);
+				imshow(kDepth,depth_raw);
 			}
 		}
-		std::cout<<"Loop"<<std::endl;
 		//blur the input
 
 		cv::Mat output;

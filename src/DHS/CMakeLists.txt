@@ -165,6 +165,10 @@ add_library(OfflineAnalysis include/OfflineAnalysis.cpp)
 target_link_libraries(OfflineAnalysis ${catkin_LIBRARIES})
 link_libraries(OfflineAnalysis)
 
+add_library(InstanceGrabber include/InstanceGrabber.cpp)
+target_link_libraries(InstanceGrabber ${catkin_LIBRARIES})
+link_libraries(InstanceGrabber)
+
 add_executable (live src/live.cpp)
 target_link_libraries(live ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
 
@@ -176,4 +180,6 @@ target_link_libraries(offline ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
 
 add_executable (projection src/projection.cpp)
 target_link_libraries(projection ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+
+
 

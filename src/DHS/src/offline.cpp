@@ -8,30 +8,40 @@
 #include "utilities.cpp"
 #include <vector>
 #include "Types.h"
+#include "InstanceGrabber.h"
+#include "Analysis.h"
 
 #define NO_FRAMES_RECEIVED -2
 #define BAD_INPUT -3
 
-#define ONE_PERSON_SEARCH 0
-#define TWO_PERSON_SEARCH 1
-#define BAG_STOLEN 2
-#define BAG_UNATTENDED 3
-#define BAG_EXCHANGED 4
-
-
 //static const std::string kWindow = "output";
+static const int kFontThickness = 1;
+static const double kFontScale = 0.6;
 
 void GetVideo(MessageFetcher& ros_handle, std::vector<cv::Mat>* frames);
 void VideoPositionCallback(int,void*);
 void ButtonCallback(int state,void*);
 void ShowMainWindow(int* position,std::vector<cv::Mat>& frames);
 void SetupEventPicker(bool* one_person_search, bool* two_person_search, bool* bag_unattended, bool* bag_stolen, bool* bag_exchanged, bool* go);
+void ShowClips(const std::vector<utility::Pair_<uint> >& instances,const std::vector<cv::Mat>& frames);
+void onMouseInstances(int event,int x,int y,int flags, void* data);
 
-void GetInstancesOfOnePersonBagStolen(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower,const cv::Scalar& bag, std::vector<std::vector<int> >* instances);
-void GetInstancesOfOnePersonBagUnattended(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower, std::vector<std::vector<int> >* instances);
-void GetInstancesOfOnePerson(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower, std::vector<std::vector<int> >* instances);
-void GetInstancesOfTwoPeopleBagExchanged(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower,const cv::Scalar& second_upper,const cv::Scalar& second_lower,const cv::Scalar& bag, std::vector<std::vector<int> >* instances);
-void GetInstancesOfTwoPeople(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower,const cv::Scalar& second_upper,const cv::Scalar& second_lower, std::vector<std::vector<int> >* instances);
+struct helper {
+	bool one_person_search,
+		 two_person_search,
+		 bag_unattended,
+		 bag_stolen,
+		 bag_exchanged,
+		 go;
+	helper() {
+		one_person_search=false,
+		 two_person_search=false,
+		 bag_unattended=false,
+		 bag_stolen=false,
+		 bag_exchanged=false,
+		 go=false;
+	}
+};
 
 int main(int argc, char** argv)
 {
@@ -39,6 +49,7 @@ int main(int argc, char** argv)
 
 	MessageFetcher ros_handle;
 	OfflineAnalysis colors_handle("/r/people","/r/bags");
+	Analysis analysis_handle("/r/people","/r/bags");
 	
 	bool run = true;
 	int frame_number;
@@ -47,13 +58,9 @@ int main(int argc, char** argv)
 	imshow("temp",temp);
 
 	//event picker
-	bool one_person_search=false,
-		 two_person_search=false,
-		 bag_unattended=false,
-		 bag_stolen=false,
-		 bag_exchanged=false,
-		 go=false;
-	SetupEventPicker(&one_person_search, &two_person_search, &bag_unattended, &bag_stolen,  &bag_exchanged, &go);
+	helper options;
+
+	SetupEventPicker(&options.one_person_search, &options.two_person_search, &options.bag_unattended, &options.bag_stolen,  &options.bag_exchanged, &options.go);
 
 	//get the video from the ROS topic
 	std::vector<cv::Mat> frames;
@@ -70,44 +77,21 @@ int main(int argc, char** argv)
 		ShowMainWindow(&video_position,frames);
 
 	//wait for event
-	while(go==false) { if(cv::waitKey(1)=='q') break; }
-
-	int event,second_event=0;
-	if		(one_person_search)	event = ONE_PERSON_SEARCH;
-	else if (two_person_search) event = TWO_PERSON_SEARCH;
-	if 		(bag_unattended) 	second_event = BAG_UNATTENDED;
-	else if (bag_stolen) 		second_event = BAG_STOLEN;
-	else if (bag_exchanged) 	second_event = BAG_EXCHANGED;
-
-	//validate input
-	if(event==ONE_PERSON_SEARCH) {
-		if(second_event==BAG_EXCHANGED) {
-			std::cout<<"That search is not possible"<<std::endl;
-			return BAD_INPUT;
-		}
-	}
-	else {
-		if(second_event==BAG_UNATTENDED || second_event==BAG_STOLEN) {
-			std::cout<<"That search is not possible"<<std::endl;
-			return BAD_INPUT;
-		}
-	}
-
-	int first_upper_hue=0,first_lower_hue=0,second_upper_hue=0,second_lower_hue=0,bag_hue=0;
+	while(options.go==false) { if(cv::waitKey(1)=='q') break; }
 
 	//be sure we have enough colors
 	bool need_one_person=false,need_two_people=false,need_bag=false;
-	if(second_event!=0) {
+	if(options.bag_unattended || options.bag_exchanged || options.bag_stolen) {
 		if(colors_handle.bag_colors_.size()<1) {
 			need_bag = true;
 		}
 	}
-	if(event==ONE_PERSON_SEARCH) {
+	if(options.one_person_search || options.bag_unattended) {
 		if(colors_handle.people_colors_.size()<1) {
 			need_one_person=true;
 		}
 	}
-	else {
+	else { //two people
 		if(colors_handle.people_colors_.size()==0) {
 			need_one_person = true;
 		}
@@ -118,62 +102,63 @@ int main(int argc, char** argv)
 
 	if(need_one_person) {
 		std::cout<<"Please add a person's color distribution"<<std::endl;
-		while(colors_handle.people_colors_.size()<1) continue;
+		while(colors_handle.people_colors_.size()<1) ros::spinOnce();
 	}
 	if(need_two_people) {
 		std::cout<<"Please add two more peoples' color distributions"<<std::endl;
-		while(colors_handle.people_colors_.size()<2) continue;
+		while(colors_handle.people_colors_.size()<2) ros::spinOnce();
 	}
 	if(need_bag) {
 		std::cout<<"Please add a bag color distribution"<<std::endl;
-		while(colors_handle.bag_colors_.size()<1) continue;
+		while(colors_handle.bag_colors_.size()<1) ros::spinOnce();
 	}
 
 	//get the colors
 	cv::Scalar first_upper = colors_handle.people_colors_[0][0],
 			   first_lower = colors_handle.people_colors_[0][1],
 			   second_upper,second_lower,bag;
-	if(event==TWO_PERSON_SEARCH) {
+	if(options.two_person_search || options.bag_exchanged || options.bag_stolen) {
 		second_upper = colors_handle.people_colors_[1][0];
 		second_lower = colors_handle.people_colors_[1][1];
 	}
-	if(second_event!=0) {
+	if(options.bag_stolen || options.bag_exchanged || options.bag_unattended) {
 		bag = colors_handle.bag_colors_[0];
 	}
 
 	//ready to do analysis
-	std::vector<std::vector<int> > instances;
-	if(event==ONE_PERSON_SEARCH) {
-		if(second_event==BAG_STOLEN) {
-			GetInstancesOfOnePersonBagStolen(frames,first_upper,first_lower,bag,&instances);
-		}
-		else if(second_event==BAG_UNATTENDED) {
-			GetInstancesOfOnePersonBagUnattended(frames,first_upper,first_lower,&instances);
-		}
-		else {
-			GetInstancesOfOnePerson(frames,first_upper,first_lower,&instances);
-		}
+	InstanceGrabber instancer;
+	if(options.one_person_search) {
+		std::cout<<"Setup as one person track"<<std::endl;
+		instancer.Setup(R_ONE_PERSON_TRACK,first_upper,first_lower);
 	}
-	else { //TWO_PERSON_SEARCH
-		if(second_event==BAG_EXCHANGED) {
-			GetInstancesOfTwoPeopleBagExchanged(frames,first_upper,first_lower,second_upper,second_lower,bag,&instances);
-		}
-		else {
-			GetInstancesOfTwoPeople(frames,first_upper,first_lower,second_upper,second_lower,&instances);
-		}
+	else if(options.two_person_search) {
+		instancer.Setup(R_TWO_PERSON_MEET,first_upper,first_lower,second_upper,second_lower);
+	}
+	else if(options.bag_exchanged) {
+		instancer.Setup(R_TWO_PERSON_BAG_EXCHANGE,first_upper,first_lower,second_upper,second_lower,bag);
+	}
+	else if(options.bag_stolen) {
+		instancer.Setup(R_TWO_PERSON_BAG_STEAL,first_upper,first_lower,second_upper,second_lower,bag);
+	}
+	else if(options.bag_unattended) {
+		instancer.Setup(R_ONE_PERSON_BAG_UNATTENDED,first_upper,first_lower,bag);
 	}
 
+	//analysis handle
+	PersonList people;
+	BagList bags;
 
+	//main processing loop
+	std::cout<<"Processjng..."<<std::endl;
+	for(uint frame_index=0;frame_index<frames.size();frame_index++) {
+		analysis_handle.Update(frames[frame_index],cv::Mat(),&people,&bags);
 
-	//main loop
-	while(run) {
-		char key = cv::waitKey(1);
-		switch(key) {
-		case 'q': case 'Q':
-			run = false;
-			break;
-		}
+		instancer.Update(frame_index,people,bags);
 	}
+	std::cout<<"Done processing"<<std::endl;
+	std::cout<<"instancer size: "<<instancer.instances_.size();
+	instancer.PrintInstances(std::cout);
+	ShowClips(instancer.Instances(),frames);
 	//cleanup
 	cv::destroyAllWindows();
 	return 0;
@@ -227,36 +212,50 @@ void ButtonCallback(int state,void* input) {
 	std::cout<<"new state: "<<*data<<std::endl;
 }
 
-void GetInstancesOfOnePersonBagStolen(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower,const cv::Scalar& bag, std::vector<std::vector<int> >* instances) {
-/*	//make analysis handle and data
-	Analysis analysis_handle("/r/people","/r/bags");
-	PersonList people,full_people_list;
-	BagList bags,full_bag_list;
+void ShowClips(const std::vector<utility::Pair_<uint> >& instances,const std::vector<cv::Mat>& frames) {
+	//generate window with instances
+	cv::Size control_size(400,instances.size()*20);
+	cv::Mat control_window(control_size,CV_8UC1,cv::Scalar(0));
 
-	//get instances of the people and bag
-	for(uint frame_index=0;frame_index<frames;frame_index++) {
-		analysis_handle.Update(frames[frame_index],cv::Mat(),&people,&bags);
-		//check each person and see if they have disappeared. If so, add them to the permanent list
-		for(uint person_index=0;person_index<people.size();person_index++) {
-			if((frame_index - people[person_index].last_seen)>30) {
-				//if they haven't been seen in more than 30 frames (1 second)
-				full_people_list.push_back(people[person_index]);
-				people.erase(people.begin()+person_index);
-			}
-		}
+	for(uint instance_index=0;instance_index<instances.size();instance_index++) {
+		std::stringstream name;
+		name<<"Start: "<<instances[instance_index][0]<<" End: "<<instances[instance_index][1];
+		cv::putText(control_window,name.str(),cv::Point(30,instance_index*20+15),CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(255),kFontThickness,8);
+		cv::rectangle(control_window,cv::Rect(5,instance_index*20+3,14,14),cv::Scalar(255),-1,8);
+		cv::rectangle(control_window,cv::Rect(7,instance_index*20+5,10,10),cv::Scalar(128),-1,8);
 	}
-*/
-	//figure out if/when the bag belongs to the person
-}
-void GetInstancesOfOnePersonBagUnattended(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower, std::vector<std::vector<int> >* instances) {
+	int active_instance=0,last_active_instance=-1;
+	imshow("Instances",control_window);
+	cv::setMouseCallback("Instances",onMouseInstances,&active_instance);
+
+	int slider_min=0,slider_max=1;
+
+	while(cv::waitKey(1)!='q') {
+		if(last_active_instance!=active_instance) {
+			//load the new instance
+			slider_min = instances[active_instance][0];
+			slider_max = instances[active_instance][1];
+			last_active_instance = active_instance;
+			cv::setTrackbarPos("Position","Video",slider_min);
+			imshow("Video",frames[slider_min]);
+		}
+		int current = cv::getTrackbarPos("Position","Video");
+
+		if(current < slider_min) {
+			cv::setTrackbarPos("Position","Video",slider_min);
+		}
+		else if(current > slider_max) {
+			cv::setTrackbarPos("Position","Video",slider_max);
+		}
+
+	}
 
 }
-void GetInstancesOfOnePerson(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower, std::vector<std::vector<int> >* instances) {
 
-}
-void GetInstancesOfTwoPeopleBagExchanged(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower,const cv::Scalar& second_upper,const cv::Scalar& second_lower,const cv::Scalar& bag, std::vector<std::vector<int> >* instances) {
-
-}
-void GetInstancesOfTwoPeople(const std::vector<cv::Mat> frames, const cv::Scalar& first_upper,const cv::Scalar& first_lower,const cv::Scalar& second_upper,const cv::Scalar& second_lower, std::vector<std::vector<int> >* instances) {
-
+void onMouseInstances(int event,int x,int y,int flags, void* data) {
+	int* active_instance = (int*)data;
+	if(event==CV_EVENT_LBUTTONDOWN) {
+		*active_instance = y/20;
+		std::cout<<"Active instance: "<<*active_instance<<std::endl;
+	}
 }

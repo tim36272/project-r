@@ -2,8 +2,8 @@
 MessageFetcher::MessageFetcher() : it_(nh_)
 {
 	//transport setup
-	rgb_sub_ = it_.subscribe("camera/rgb/image_color", 1, &MessageFetcher::rgbCb,this);
-	depth_sub_ = it_.subscribe("camera/depth_registered/image_raw", 1, &MessageFetcher::depthCb, this);
+	rgb_sub_ = nh_.subscribe("/camera/rgb/image_color", 1, &MessageFetcher::rgbCb,this);
+	depth_sub_ = nh_.subscribe("/camera/depth_registered/disparity", 1, &MessageFetcher::disparityCb, this);
 
 	raw_updated_= depth_updated_ = false;
 
@@ -28,6 +28,19 @@ void MessageFetcher::rgbCb(const sensor_msgs::ImageConstPtr& msg) {
 	convertMsgToCvImagePtr(msg,raw_rgb_ptr_);
 
 	raw_updated_ = true;
+}
+
+void MessageFetcher::disparityCb(const stereo_msgs::DisparityImageConstPtr& msg) {
+	  try
+	  {
+		  raw_depth_ptr_ = cv_bridge::toCvCopy(msg->image);
+	  }
+	  catch (cv_bridge::Exception& e)
+	  {
+	    ROS_ERROR("cv_bridge exception: %s", e.what());
+	    return;
+	  }
+	  depth_updated_ = true;
 }
 
 bool MessageFetcher::GetFrame(cv::Mat& rgb_frame, cv::Mat& depth_frame) {

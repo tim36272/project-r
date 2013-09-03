@@ -174,3 +174,6 @@ target_link_libraries(picker ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
 add_executable (offline src/offline.cpp)
 target_link_libraries(offline ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
 
+add_executable (projection src/projection.cpp)
+target_link_libraries(projection ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+
