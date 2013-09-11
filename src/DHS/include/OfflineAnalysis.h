@@ -8,7 +8,7 @@
 #include <ros/ros.h>
 
 #include "BlobDescriptor.h"
-#include "utilities.cpp"
+#include "utility.h"
 #include "Types.h"
 #include "dhs/person.h"
 #include "dhs/bag.h"

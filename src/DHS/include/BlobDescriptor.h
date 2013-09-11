@@ -24,10 +24,8 @@ public:
 class PersonDescriptor{
 public:
 	cv::Rect last_location;
-	int last_seen;
-	int first_seen;
+	int last_seen, first_seen, observation_count,depth_position;
 	std::map<int,HistoryDescriptor> history;
-	int observation_count;
 	Kalman filter;
 	PersonDescriptor();
 	PersonDescriptor(const PersonDescriptor& rhs);
@@ -38,15 +36,14 @@ public:
 	void update_kalman(int frame_number);
 	utility::Pair_<cv::Scalar> color;
 	cv::Rect last_upper_location,last_lower_location;
+
 };
 
 class BagDescriptor{
 public:
 	cv::Rect last_location;
-	int last_seen;
-	int first_seen;
+	int last_seen, first_seen, observation_count, depth_position;
 	std::map<int,HistoryDescriptor> history;
-	int observation_count;
 	Kalman filter;
 	BagDescriptor();
 	BagDescriptor(const BagDescriptor& rhs);

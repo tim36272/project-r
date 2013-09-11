@@ -5,7 +5,7 @@ project(dhs)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 set(cv_bridge_DIR "/opt/ros/groovy/stacks/cv_bridge/catkin_generated/installspace")
-find_package(catkin REQUIRED COMPONENTS cv_bridge image_transport roscpp message_generation)
+find_package(catkin REQUIRED COMPONENTS cv_bridge image_transport roscpp message_generation rosbag)
 
 #redirect OpenCV to OpenGL installation
 set(OpenCV_DIR "/opt/ros/groovy/stacks/opencv2/share/OpenCV")
@@ -156,18 +156,25 @@ add_library(BlobDescriptor include/BlobDescriptor.cpp)
 target_link_libraries(BlobDescriptor ${catkin_LIBRARIES})
 link_libraries(BlobDescriptor)
 
-
 add_library(Analysis include/Analysis.cpp)
 target_link_libraries(Analysis ${catkin_LIBRARIES})
 link_libraries(Analysis)
 
-add_library(OfflineAnalysis include/OfflineAnalysis.cpp)
-target_link_libraries(OfflineAnalysis ${catkin_LIBRARIES})
-link_libraries(OfflineAnalysis)
-
 add_library(InstanceGrabber include/InstanceGrabber.cpp)
 target_link_libraries(InstanceGrabber ${catkin_LIBRARIES})
 link_libraries(InstanceGrabber)
+
+add_library(Utility include/utility.cpp)
+target_link_libraries(Utility ${catkin_LIBRARIES})
+link_libraries(Utility)
+
+add_library(Broadcaster include/Broadcaster.cpp)
+target_link_libraries(Broadcaster ${catkin_LIBRARIES})
+link_libraries(Broadcaster)
+
+add_library(TcpClient include/TcpClient.cpp)
+target_link_libraries(TcpClient ${catkin_LIBRARIES})
+link_libraries(TcpClient)
 
 add_executable (live src/live.cpp)
 target_link_libraries(live ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
@@ -178,8 +185,25 @@ target_link_libraries(picker ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
 add_executable (offline src/offline.cpp)
 target_link_libraries(offline ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
 
-add_executable (projection src/projection.cpp)
-target_link_libraries(projection ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+add_executable (offline_viewer src/offline_viewer.cpp)
+target_link_libraries(offline_viewer ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
 
+#add_executable (projection src/projection.cpp)
+#target_link_libraries(projection ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+
+add_executable (depth src/depth.cpp)
+target_link_libraries(depth ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+
+add_executable (hsv src/hsv.cpp)
+target_link_libraries(hsv ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+
+#add_executable (depthaticity src/depthaticity.cpp)
+#target_link_libraries(depthaticity ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+
+#add_executable (hinter src/hinter.cpp)
+#target_link_libraries(hinter ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+
+add_executable (network_broadcaster src/network_broadcaster.cpp)
+target_link_libraries(network_broadcaster ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
 
 

@@ -17,11 +17,14 @@ class MessageFetcher
 		ros::NodeHandle nh_;
 		image_transport::ImageTransport it_;
 		ros::Subscriber depth_sub_;
+		ros::Subscriber disparity_sub_;
 		ros::Subscriber rgb_sub_;
 
 		//pointers to raw Mats
 		cv_bridge::CvImagePtr raw_rgb_ptr_;
 		cv_bridge::CvImagePtr raw_depth_ptr_;
+		cv_bridge::CvImagePtr raw_disparity_ptr_;
+
 
 		void depthCb(const sensor_msgs::ImageConstPtr& msg);
 		void rgbCb(const sensor_msgs::ImageConstPtr& msg);

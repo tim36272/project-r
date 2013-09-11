@@ -12,7 +12,7 @@ void PersonDescriptor::update_kalman(int frame_number) {
 	if(last_seen==frame_number) {
 		filter.update(&last_location);
 	}
-	else if(frame_number-last_seen < 10) {
+	else if(frame_number-last_seen < 5) {
 		filter.update(NULL);
 	}
 }
@@ -29,6 +29,7 @@ PersonDescriptor& PersonDescriptor::operator=(const PersonDescriptor& rhs) {
 	color = rhs.color;
 	last_upper_location = rhs.last_upper_location;
 	last_lower_location = rhs. last_lower_location;
+	depth_position= rhs.depth_position;
 
 	//copy the list
 	history = rhs.history;
@@ -62,6 +63,7 @@ BagDescriptor& BagDescriptor::operator=(const BagDescriptor& rhs) {
 	observation_count = rhs.observation_count;
 	last_location = rhs.last_location;
 	color = rhs.color;
+	depth_position = rhs.depth_position;
 
 	//copy the list
 	history = rhs.history;

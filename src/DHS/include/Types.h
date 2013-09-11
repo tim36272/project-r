@@ -11,6 +11,10 @@ namespace utility {
 			values[0] = -1;
 			values[1] = -1;
 		}
+		Pair_(const Pair_& rhs) {
+			values[0] = rhs.values[0];
+			values[1] = rhs.values[1];
+		}
 		Pair_(const T& first,const T& second) {
 			values[0] = first;
 			values[1] = second;

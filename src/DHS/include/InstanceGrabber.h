@@ -4,82 +4,77 @@
 #include <vector>
 #include <fstream>
 #include <ros/console.h>
-#include "utilities.cpp"
+#include "utility.h"
 
-#define R_NO_EVENT					-1
-#define R_ONE_PERSON_TRACK	 		0
-#define R_ONE_PERSON_BAG_UNATTENDED	1
-#define R_TWO_PERSON_MEET 			2
-#define R_TWO_PERSON_BAG_STEAL 		3
-#define R_TWO_PERSON_BAG_EXCHANGE 	4
+#define EVENT_ONE_PERSON_SEARCH 3
+#define EVENT_ONE_PERSON_ABANDON 4
+#define EVENT_TWO_PERSON_SEARCH 5
+#define EVENT_TWO_PERSON_STEAL 6
+#define EVENT_TWO_PERSON_EXCHANGE 7
 
 #define START_TIME 0
 #define END_TIME 1
 
+#define UPPER_COLOR 0
+#define LOWER_COLOR 1
+#define NOT_FOUND -1
+
 class InstanceGrabber {
 public:
 	InstanceGrabber();
-	InstanceGrabber(int objective_code,
-					const cv::Scalar& person_1_upper,
-					const cv::Scalar& person_1_lower);
-	InstanceGrabber(int objective_code,
-					const cv::Scalar& person_1_upper,
-					const cv::Scalar& person_1_lower,
-					const cv::Scalar& bag);
+	InstanceGrabber(uint objective_code,
+			 const cv::Scalar person_one_upper_color,
+			 const cv::Scalar person_one_lower_color,
+			 const cv::Scalar  person_two_upper_color,
+			 const cv::Scalar  person_two_lower_color,
+			 const cv::Scalar bag_color,
+			 int person_one_source_index,
+			 int person_two_source_index,
+			 int bag_source_index);
+	void Setup(uint objective_code,
+			 const cv::Scalar person_one_upper_color,
+			 const cv::Scalar person_one_lower_color,
+			 const cv::Scalar  person_two_upper_color,
+			 const cv::Scalar  person_two_lower_color,
+			 const cv::Scalar bag_color,
+			 int person_one_source_index,
+			 int person_two_source_index,
+			 int bag_source_index);
 
-	InstanceGrabber(int objective_code,
-					const cv::Scalar& person_1_upper,
-					const cv::Scalar& person_1_lower,
-					const cv::Scalar& person_2_upper,
-					const cv::Scalar& person_2_lower);
-
-	InstanceGrabber(int objective_code,
-					const cv::Scalar& person_1_upper,
-					const cv::Scalar& person_1_lower,
-					const cv::Scalar& person_2_upper,
-					const cv::Scalar& person_2_lower,
-					const cv::Scalar& bag);
 
 	void Update(int frame_number,const PersonList& people,const BagList& bags);
-	void Update(int frame_number,const PersonList& people);
-	void Setup(int objective_code,
-			const cv::Scalar& person_1_upper,
-			const cv::Scalar& person_1_lower);
-	void Setup(int objective_code,
-					const cv::Scalar& person_1_upper,
-					const cv::Scalar& person_1_lower,
-					const cv::Scalar& bag);
-	void Setup(int objective_code,
-					const cv::Scalar& person_1_upper,
-					const cv::Scalar& person_1_lower,
-					const cv::Scalar& person_2_upper,
-					const cv::Scalar& person_2_lower);
-	void Setup(int objective_code,
-					const cv::Scalar& person_1_upper,
-					const cv::Scalar& person_1_lower,
-					const cv::Scalar& person_2_upper,
-					const cv::Scalar& person_2_lower,
-					const cv::Scalar& bag);
-
-	void PrintInstances(std::ostream& out);
+	friend std::ostream& operator <<(std::ostream& out, const InstanceGrabber& rhs);
 	bool EventInProgress() const;
-	bool AlreadyStolen() const;
-	std::vector<utility::Pair_<uint> > Instances() {return instances_;}
+	int event_code() const {return event_code_;}
+	std::vector<utility::Pair > Instances() {return instances_;}
+	int person_one_source() const {return person_one_source_index_;}
+	int person_two_source() const {return person_two_source_index_;}
+	int bag_source() const {return bag_source_index_;}
+	utility::Pair operator [](int index) {return instances_[index];}
+
 
 private:
 	bool looking_for_start_,setup_done_;
-	int objective_code_,frame_number_,missing_person_buffer_;
-	cv::Scalar person_1_upper_,person_1_lower_,person_2_upper_,person_2_lower_,bag_;
+	int event_code_,frame_number_,missing_person_buffer_;
 public:
-	std::vector<utility::Pair_<uint> > instances_;
+	int person_one_source_index_,person_two_source_index_,bag_source_index_;
+private:
+	cv::Scalar bag_color_,person_one_upper_color_,person_one_lower_color_,person_two_upper_color_,person_two_lower_color_;
+public:
+	std::vector<utility::Pair > instances_;
 private:
 	cv::Rect bag_location_;
-	bool already_stolen_;
-	void UpdateOnePersonTrack(const PersonList& people);
-	void UpdateOnePersonBagUnattended(const PersonList& people,const BagList& bags);
-	void UpdateTwoPersonBagExchange(const PersonList& people,const BagList& bags);
-	void UpdateTwoPersonBagSteal(const PersonList& people,const BagList& bags);
-	void UpdateTwoPersonMeet(const PersonList& people);
+	int GetFirstPersonIndex(const PersonList& people);
+	int GetSecondPersonIndex(const PersonList& people);
+
+	int GetBagIndex(const BagList& bags);
+
+
+	void UpdateOnePersonSearch(const PersonList& people);
+	void UpdateOnePersonAbandon(const PersonList& people,const BagList& bags);
+	void UpdateTwoPersonSearch(const PersonList& people);
+	void UpdateTwoPersonSteal(const PersonList& people,const BagList& bags);
+	void UpdateTwoPersonExchange(const PersonList& people,const BagList& bags);
 };
 
 #endif /* INSTANCEGRABBER_H_ */

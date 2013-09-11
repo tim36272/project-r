@@ -5,7 +5,7 @@
 #include <string>
 #include <fstream>
 #include <string>
-#include "utilities.cpp"
+#include "utility.h"
 #include "dhs/person.h"
 #include "dhs/bag.h"
 #include <opencv2/imgproc/imgproc.hpp>

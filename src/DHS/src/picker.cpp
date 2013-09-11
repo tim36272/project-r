@@ -4,7 +4,7 @@
 #include <string>
 #include <fstream>
 #include <string>
-#include "utilities.cpp"
+#include "utility.h"
 #include "dhs/person.h"
 #include "dhs/bag.h"
 #include <opencv2/imgproc/imgproc.hpp>
@@ -97,7 +97,7 @@ if(SHOW_DEPTH)	cv::namedWindow(kDepth,CV_WINDOW_AUTOSIZE);
 //			cv::rectangle(color_raw,cv::Point(600,282),cv::Point(680,400),cv::Scalar(0,0,0),-1,8);
 			data.image = color_raw;
 			if(SHOW_DEPTH) {
-				depth_raw.convertTo(depth_raw,CV_8U,255./60.);
+				depth_raw.convertTo(depth_raw,CV_8U,255./2000.);
 				imshow(kDepth,depth_raw);
 			}
 		}

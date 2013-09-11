@@ -11,7 +11,7 @@
 #include <ros/ros.h>
 
 #include "BlobDescriptor.h"
-#include "utilities.cpp"
+#include "utility.h"
 #include "Types.h"
 #include "dhs/person.h"
 #include "dhs/bag.h"
@@ -34,13 +34,17 @@ class Analysis {
 		//callbacks
 		void PersonColorCallback(const dhs::person& msg);
 		void BagColorCallback(const dhs::bag& msg);
+		void GetHint(const cv::Mat& color_raw, const cv::Mat& depth_raw, cv::Mat* hint);
+		void ApplyHint(const cv::Mat& hint, const cv::Mat& depth_raw, const cv::Mat& color_raw, cv::Mat* color_masked, cv::Mat* depth_masked);
 
 		int frame_number_;
+		cv::Scalar last_mean_;
 		cv::Mat color_raw_,depth_raw_;
 
 		ros::NodeHandle node_handle_;
-
 		ros::Subscriber person_subscription_,bag_subscription_;
+
+		cv::BackgroundSubtractorMOG2 color_segmentation_,depth_segmentation_;
 };
 
 #endif
