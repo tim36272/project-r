@@ -10,7 +10,6 @@
 #include "InstanceGrabber.h"
 #include "event.cpp"
 #include "instancer_setup.cpp"
-#include "Broadcaster.h"
 
 static const std::string kWindow = "Live";
 static const bool kRecord = true;
@@ -18,7 +17,6 @@ static const int kFontThickness = 2;
 static const double kFontScale = 0.6;
 
 void drawPeople(const PersonList& people,cv::Mat* image, int frame_number);
-void drawPeople(const PersonList& people,const InstanceGrabber& instance, cv::Mat* image, int frame_number);
 void drawBags(const PersonList& people,const BagList& bags, cv::Mat* image, int frame_number);
 int getVideoNumber(const char path[]);
 void DrawInstancerLabels(const std::vector<InstanceGrabber>& instances,cv::Mat* image);
@@ -32,7 +30,6 @@ int main(int argc, char** argv)
 	MessageFetcher ros_handle;
 	cv::Mat color_raw,depth_raw,hsv_raw;
 	Analysis analysis_handle("/r/people","/r/bags");
-	Broadcaster broadcaster;
 	PersonList people;
 	BagList bags;
 	bool run = true;
@@ -41,9 +38,11 @@ int main(int argc, char** argv)
 	
 	//create output writer
 	cv::VideoWriter writer;
-	std::stringstream video_output_name;
-	video_output_name << "saves/save_"<<getVideoNumber("saves/video_number")<<".avi";
-	if(kRecord) writer.open(video_output_name.str(),CV_FOURCC('D','I','V','X'),23,cv::Size(640,480),true);
+	if(kRecord) {
+		std::stringstream video_output_name;
+		video_output_name << "saves/save_"<<getVideoNumber("saves/video_number")<<".avi";
+		writer.open(video_output_name.str(),CV_FOURCC('D','I','V','X'),23,cv::Size(640,480),true);
+	}
 
 	//ask for colors
 	cv::Mat pre_menu(cv::Size(kMenuWidth,kMenuItemHeight),CV_8UC3,cv::Scalar(0));
@@ -54,7 +53,7 @@ int main(int argc, char** argv)
 	//get event to detect
 	uint search_code = MenuInitial(analysis_handle.bag_colors_,analysis_handle.people_colors_);
 
-	//decide how many instances to create
+	//decide how many instances to create and add an instance for each of them
 	int event = DecodeEvent(search_code);
 	int person_one_event_index = DecodePersonOne(search_code);
 	int person_two_event_index = DecodePersonTwo(search_code);
@@ -88,7 +87,7 @@ int main(int argc, char** argv)
 			continue;
 		}
 
-		//look for the colors
+		//look for the desired colors
 		frame_number = analysis_handle.Update(color_raw,depth_raw,&people,&bags);
 
 		//update all the instancer members
@@ -96,19 +95,13 @@ int main(int argc, char** argv)
 			instances[instance_index].Update(frame_number,people,bags);
 		}
 
-		//show the blobs on the frame
+		//show the blobs on the output frame
 		cv::Mat output;
 		color_raw.copyTo(output);
-//		cv::rectangle(output,cv::Rect(0,0,color_raw.size().width,100),cv::Scalar(0,0,0),-1,8);
-/*		if(instances.size()>0) {
-			drawPeople(people,instances[0],&output,frame_number);
-		}
-		else {*/
-			drawPeople(people,&output,frame_number);
-//		}
+
+		drawPeople(people,&output,frame_number);
 		drawBags(people,bags,&output,frame_number);
 		DrawInstancerLabels(instances,&output);
-
 
 		if(instances.size()>0) {
 			ShowGuy(instances[0].person_one_upper_color_,
@@ -122,9 +115,8 @@ int main(int argc, char** argv)
 		//Note:: this has annotations.
 		if(kRecord) writer.write(output);
 
-		//show the image on screen and network
+		//show the image on screen
 		imshow(kWindow,output);
-		broadcaster.Broadcast(output);
 
 		char key = cv::waitKey(1);
 		switch(key) {
@@ -169,58 +161,6 @@ void drawPeople(const PersonList& people,cv::Mat* image, int frame_number) {
 			cv::putText(*image,text.str(),estimate_origin,CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,0,255),kFontThickness,8);
 			cv::rectangle(*image,people[person_index].filter.bounding_rect(),rect_color,1,8);
 	}
-}
-
-void drawPeople(const PersonList& people,const InstanceGrabber& instance, cv::Mat* image, int frame_number) {
-	std::cout<<"p1u"<<instance.person_one_upper_color_<<"p1l"<<instance.person_one_lower_color_<<"p2u"<<instance.person_two_upper_color_<<"p2l"<<instance.person_two_lower_color_<<std::endl;
-	int person_one = utility::CheckForPersonUsingColorScheme(people,instance.person_one_upper_color_,instance.person_one_lower_color_);
-	int person_two = utility::CheckForPersonUsingColorScheme(people,instance.person_two_upper_color_,instance.person_two_lower_color_);
-	std::cout<<"P1 index: "<<person_one<<" P2: "<<person_two<<std::endl;
-	if(person_one!=-1) {
-		//if this was seen in the last 3 frames
-		cv::Scalar rect_color;
-		bool skip = false;
-		if((frame_number-people[person_one].first_seen) < 5) rect_color = cv::Scalar(0,255,255);
-//		else if(frame_number-people[person_one].last_seen > 10) skip = true;
-		else if(frame_number-people[person_one].last_seen > 2) rect_color = cv::Scalar(0,0,255);
-		else rect_color = cv::Scalar(0,255,0);
-
-
-		if(!skip) {
-			std::stringstream text;
-			text << "Person # 0";
-std::cout<<"drew first"<<std::endl;
-std::cout<<"one rect: "<<people[person_one].filter.bounding_rect()<<std::endl;
-			//draw Kalman estimates
-			cv::Point estimate_origin = people[person_one].filter.bounding_rect_origin();
-
-			cv::putText(*image,text.str(),estimate_origin,CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,0,255),kFontThickness,8);
-			cv::rectangle(*image,people[person_one].filter.bounding_rect(),rect_color,1,8);
-		}
-	}
-	if(person_two!=-1 ) {
-		//if this was seen in the last 3 frames
-		cv::Scalar rect_color;
-		bool skip = false;
-		if((frame_number-people[person_two].first_seen) < 5) rect_color = cv::Scalar(0,255,255);
-//		else if(frame_number-people[person_two].last_seen > 10) skip = true;
-		else if(frame_number-people[person_two].last_seen > 2) rect_color = cv::Scalar(0,0,255);
-		else rect_color = cv::Scalar(0,255,0);
-
-		if(!skip) {
-			std::stringstream text;
-			text << "Person # 1";
-			std::cout<<"drew second"<<std::endl;
-			std::cout<<"two rect: "<<people[person_two].last_location<<std::endl;
-			//draw Kalman estimates
-			cv::Point estimate_origin = people[person_two].filter.bounding_rect_origin();
-
-			cv::putText(*image,text.str(),estimate_origin,CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,0,255),kFontThickness,8);
-			//cv::rectangle(*image,people[person_two].filter.bounding_rect(),rect_color,1,8);
-			cv::rectangle(*image,people[person_two].last_location,rect_color,1,8);
-		}
-	}
-
 }
 
 void drawBags(const PersonList& people,const BagList& bags, cv::Mat* image, int frame_number) {
@@ -329,26 +269,7 @@ void DrawInstancerLabels(const std::vector<InstanceGrabber>& instances,cv::Mat* 
 			}
 
 		if( instances[instance_index].EventInProgress() ) {
-//			label<<": in progress";
 			cv::putText(*image,label.str(),cv::Point(x_origin,y_origin),CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,255,0),kFontThickness,8);
-		}
-		else {
-			if(instances[instance_index].event_code()==EVENT_TWO_PERSON_STEAL) {
-				if(instances[instance_index].EventInProgress()) {
-					label<<": might be happening";
-//					cv::putText(*image,label.str(),cv::Point(x_origin,y_origin),CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,255,0),kFontThickness,8);
-
-				}
-				else {
-					label<<": not in progress";
-//					cv::putText(*image,label.str(),cv::Point(x_origin,y_origin),CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,0,255),kFontThickness,8);
-
-				}
-			}
-			else {
-				label<<": not in progress";
-//				cv::putText(*image,label.str(),cv::Point(x_origin,y_origin),CV_FONT_HERSHEY_SIMPLEX,kFontScale,cv::Scalar(0,0,255),kFontThickness,8);
-			}
 		}
 		y_origin+=20;
 	}
