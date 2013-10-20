@@ -1,8 +1,0 @@
-prefix=/nfs/home/tsweet/workspace/DHS/devel
-
-Name: dhs
-Description: Description of dhs
-Version: 0.0.0
-Cflags: -I/nfs/home/tsweet/workspace/DHS/devel/include -I/nfs/home/tsweet/workspace/DHS/src/dhs/include
-Libs: -L/nfs/home/tsweet/workspace/DHS/devel/lib 
-Requires: cv_bridge image_transport roscpp message_runtime
