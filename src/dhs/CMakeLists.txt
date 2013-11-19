@@ -4,11 +4,11 @@ project(dhs)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-set(cv_bridge_DIR "/opt/ros/groovy/stacks/cv_bridge/catkin_generated/installspace")
-find_package(catkin REQUIRED COMPONENTS cv_bridge image_transport roscpp message_generation rosbag)
+#set(cv_bridge_DIR "/opt/ros/groovy/stacks/cv_bridge/catkin_generated/installspace")
+find_package(catkin REQUIRED COMPONENTS OpenCV cv_bridge image_transport roscpp message_generation rosbag)
 
 #redirect OpenCV to OpenGL installation
-set(OpenCV_DIR "/opt/ros/groovy/stacks/opencv2/share/OpenCV")
+#set(OpenCV_DIR "/opt/ros/groovy/stacks/opencv2/share/OpenCV")
 
 #SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/CMakeModules/")
 
@@ -16,9 +16,6 @@ set(OpenCV_DIR "/opt/ros/groovy/stacks/opencv2/share/OpenCV")
 #include_directories(${OpenCV_INCLUDE_DIRS})
 #add_definitions(${OpenCV_DEFINITIONS})
 #MESSAGE(STATUS "OpenCV at: ${OpenCV_INCLUDE_DIRS}")
-
-find_package (OpenCV 2.4.5 REQUIRED)
-find_package (cv_bridge REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -36,8 +33,9 @@ find_package (cv_bridge REQUIRED)
 ## Generate messages in the 'msg' folder
 add_message_files(
    FILES
-   person.msg
-   bag.msg
+   color.msg
+   blob.msg
+   event.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -74,7 +72,7 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-set(catkin_INCLUDE_DIRS ${catkin_INCLUDE_DIRS} "/home/tim/ros_catkin_ws/src/cv_bridge/include/cv_bridge")
+#set(catkin_INCLUDE_DIRS "include/" ${catkin_INCLUDE_DIRS})
 include_directories(include
   ${catkin_INCLUDE_DIRS}
 )
@@ -135,73 +133,54 @@ include_directories(include
 ## Testing ##
 #############
 
-## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_tim.cpp)
-# if(TARGET ${PROJECT_NAME}-test)
-#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
-# endif()
-
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_library(MessageFetcher include/MessageFetcher.cpp)
-target_link_libraries(MessageFetcher ${catkin_LIBRARIES})
-link_libraries(MessageFetcher)
+add_library(ImageFetcher src/ImageFetcher.cpp)
+target_link_libraries(ImageFetcher ${catkin_LIBRARIES})
+link_libraries(ImageFetcher)
 
-add_library(Kalman include/Kalman.cpp)
-target_link_libraries(Kalman ${catkin_LIBRARIES})
-link_libraries(Kalman)
+add_library(ImageSender src/ImageSender.cpp)
+target_link_libraries(ImageSender ${catkin_LIBRARIES})
+link_libraries(ImageSender)
 
-add_library(BlobDescriptor include/BlobDescriptor.cpp)
-target_link_libraries(BlobDescriptor ${catkin_LIBRARIES})
-link_libraries(BlobDescriptor)
+add_library(SynchronousImageFetcher src/SynchronousImageFetcher.cpp)
+target_link_libraries(SynchronousImageFetcher ${catkin_LIBRARIES})
+link_libraries(SynchronousImageFetcher)
 
-add_library(Analysis include/Analysis.cpp)
-target_link_libraries(Analysis ${catkin_LIBRARIES})
-link_libraries(Analysis)
-
-add_library(InstanceGrabber include/InstanceGrabber.cpp)
-target_link_libraries(InstanceGrabber ${catkin_LIBRARIES})
-link_libraries(InstanceGrabber)
-
-add_library(Utility include/utility.cpp)
+add_library(Utility src/Utility.cpp)
 target_link_libraries(Utility ${catkin_LIBRARIES})
 link_libraries(Utility)
 
-add_library(Broadcaster include/Broadcaster.cpp)
-target_link_libraries(Broadcaster ${catkin_LIBRARIES})
-link_libraries(Broadcaster)
+add_library(Kalman src/Kalman.cpp)
+target_link_libraries(Kalman ${catkin_LIBRARIES})
+link_libraries(Kalman)
 
-add_library(TcpClient include/TcpClient.cpp)
-target_link_libraries(TcpClient ${catkin_LIBRARIES})
-link_libraries(TcpClient)
+add_library(BlobDescriptor src/BlobDescriptor.cpp)
+target_link_libraries(BlobDescriptor ${catkin_LIBRARIES})
+link_libraries(BlobDescriptor)
 
-add_executable (live src/live.cpp)
-target_link_libraries(live ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+add_library(ProcessorNode src/ProcessorNode.cpp)
+target_link_libraries(ProcessorNode ${catkin_LIBRARIES})
+link_libraries(ProcessorNode)
 
-add_executable (picker src/picker.cpp)
-target_link_libraries(picker ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+## Add gtest based cpp test target and link libraries
+ catkin_add_gtest(utest test/utest.cpp)
+ if(TARGET utest)
+   target_link_libraries(utest ${catkin_LIBRARIES})
+ endif()
 
-add_executable (offline src/offline.cpp)
-target_link_libraries(offline ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+add_executable (segmentation executable/segmentation.cpp)
+target_link_libraries(segmentation ${catkin_LIBRARIES})
 
-add_executable (offline_viewer src/offline_viewer.cpp)
-target_link_libraries(offline_viewer ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+add_executable (image_filter executable/image_filter.cpp)
+target_link_libraries(image_filter ${catkin_LIBRARIES})
 
-#add_executable (projection src/projection.cpp)
-#target_link_libraries(projection ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+add_executable (blob_descriptor executable/blob_descriptor.cpp)
+target_link_libraries(blob_descriptor ${catkin_LIBRARIES})
 
-add_executable (depth src/depth.cpp)
-target_link_libraries(depth ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+add_executable (interface executable/interface.cpp)
+target_link_libraries(interface ${catkin_LIBRARIES})
 
-add_executable (hsv src/hsv.cpp)
-target_link_libraries(hsv ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
-
-#add_executable (depthaticity src/depthaticity.cpp)
-#target_link_libraries(depthaticity ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
-
-#add_executable (hinter src/hinter.cpp)
-#target_link_libraries(hinter ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
-
-add_executable (network_broadcaster src/network_broadcaster.cpp)
-target_link_libraries(network_broadcaster ${catkin_LIBRARIES} ${GTK3_LIBRARIES})
+add_executable (BagOnPersonProcessor executable/BagOnPersonProcessor.cpp)
+target_link_libraries(BagOnPersonProcessor ${catkin_LIBRARIES})
