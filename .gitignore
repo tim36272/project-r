@@ -12,9 +12,16 @@
 *.la
 *.a
 
-#ignore development files
+#development files
 build/
 devel/
+
+#eclipse settings
 .cproject
 .settings/
+
+#large files
 *.bag
+
+#gedit temp files
+*~
