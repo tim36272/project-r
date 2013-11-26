@@ -1,0 +1,18 @@
+<launch>
+	<node pkg="image_view" type="image_view" name="rgb_filtered_view">
+		<remap from="image" to="/camera/rgb/gaussian_filtered" />
+	</node>
+	<node pkg="image_view" type="image_view" name="rgb_segmented_view">
+		<remap from="image" to="/camera/rgb/segmentation" />
+	</node>
+	<node pkg="dhs" type="image_filter" name="rgb_filter" output="screen">
+		<remap from="in" to="/camera/rgb/image_color" />
+		<remap from="out" to="/camera/rgb/gaussian_filtered" />
+		<param name="detect_shadows" type="bool" value="true"/>
+	</node>
+	<node pkg="dhs" type="segmentation" name="rgb_segmentation" output="screen">
+		<remap from="in" to="/camera/rgb/gaussian_filtered" />
+		<remap from="out" to="/camera/rgb/segmentation" />
+	</node>
+
+</launch>

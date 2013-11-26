@@ -11,3 +11,10 @@
 *.lai
 *.la
 *.a
+
+#ignore development files
+build/
+devel/
+.cproject
+.settings/
+*.bag

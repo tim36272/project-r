@@ -1,0 +1,18 @@
+<launch>
+	<node pkg="image_view" type="image_view" name="depth_registered_filtered_view">
+		<remap from="image" to="/camera/depth_registered/gaussian_filtered" />
+	</node>
+	<node pkg="image_view" type="image_view" name="depth_registered_segmented_view">
+		<remap from="image" to="/camera/depth_registered/segmentation" />
+	</node>
+	<node pkg="dhs" type="image_filter" name="depth_registered_filter" output="screen">
+		<remap from="in" to="/camera/depth_registered/image_raw" />
+		<remap from="out" to="/camera/depth_registered/gaussian_filtered" />
+		<!--param name="threshold" type="int" value="180" /-->
+	</node>
+	<node pkg="dhs" type="segmentation" name="depth_registered_segmentation" output="screen">
+		<remap from="in" to="/camera/depth_registered/gaussian_filtered" />
+		<remap from="out" to="/camera/depth_registered/segmentation" />
+	</node>
+
+</launch>

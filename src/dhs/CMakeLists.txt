@@ -5,17 +5,19 @@ project(dhs)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 #set(cv_bridge_DIR "/opt/ros/groovy/stacks/cv_bridge/catkin_generated/installspace")
-find_package(catkin REQUIRED COMPONENTS OpenCV cv_bridge image_transport roscpp message_generation rosbag)
+find_package(catkin REQUIRED COMPONENTS cv_bridge image_transport roscpp message_generation rosbag)
 
 #redirect OpenCV to OpenGL installation
 #set(OpenCV_DIR "/opt/ros/groovy/stacks/opencv2/share/OpenCV")
 
 #SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/CMakeModules/")
 
-#find_package(OpenCV REQUIRED)
-#include_directories(${OpenCV_INCLUDE_DIRS})
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
 #add_definitions(${OpenCV_DEFINITIONS})
-#MESSAGE(STATUS "OpenCV at: ${OpenCV_INCLUDE_DIRS}")
+MESSAGE(STATUS "OpenCV at: ${OpenCV_INCLUDE_DIRS}")
+
+set(ROS_BUILD_TYPE Debug)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
