@@ -20,8 +20,7 @@ ImageFetcher::ImageFetcher(const std::string& topic_name) : transport_(handle_)
 {
 	//transport setup
 	subscription_ = transport_.subscribe(topic_name, 1, &ImageFetcher::FrameCallback,this);
-	sleep(1);
-	ROS_INFO_STREAM("Num publishers: "<<subscription_.getNumPublishers());
+	startup_timer_ = handle_.createWallTimer(ros::WallDuration(1),&ImageFetcher::printSubscriberCount,this,true);
 	updated_= false;
 
 	sequence_number_ = 0;
@@ -68,6 +67,15 @@ int ImageFetcher::GetFrame(cv::Mat& frame) {
 	return sequence_number_;
 }
 
+int ImageFetcher::GetMostRecentFrame(cv::Mat& frame) {
+	if(raw_frame_ptr_->image.empty()) {
+		std::cout<<"No frame to report"<<std::endl;
+		return 0;
+	}
+	frame = raw_frame_ptr_->image;
+	return raw_frame_ptr_->header.seq;
+}
+
 void ImageFetcher::convertMsgToCvImagePtr(const sensor_msgs::ImageConstPtr& msg, cv_bridge::CvImagePtr& raw_ptr){
 	//try to get the message
 	try
@@ -83,4 +91,8 @@ void ImageFetcher::convertMsgToCvImagePtr(const sensor_msgs::ImageConstPtr& msg,
 
 std::string ImageFetcher::getTopicName() const{
 	return subscription_.getTopic();
+}
+
+void ImageFetcher::printSubscriberCount(const ros::WallTimerEvent&)  {
+	ROS_INFO_STREAM(subscription_.getTopic()<<" has "<<subscription_.getNumPublishers()<<" publishers");
 }

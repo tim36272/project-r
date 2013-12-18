@@ -25,6 +25,7 @@
 #include <opencv2/opencv.hpp>
 
 class BlobDescriptor;
+class BlobDescriptorExtended;
 
 typedef std::vector<cv::Point> Contour;
 typedef Contour::iterator ContourIt;
@@ -34,14 +35,18 @@ typedef std::vector<Contour> ContourList;
 typedef ContourList::iterator ContourListIt;
 typedef ContourList::const_iterator ContourListConstIt;
 
-
-
 typedef std::pair<cv::Scalar,cv::Scalar> ColorPair;
 
 typedef boost::shared_ptr<BlobDescriptor> BlobDescriptorPtr;
 typedef std::vector<BlobDescriptorPtr> BlobDescriptorPtrVector;
 typedef BlobDescriptorPtrVector::iterator BlobDescriptorPtrVectorIt;
 typedef BlobDescriptorPtrVector::const_iterator BlobDescriptorPtrVectorConstIt;
+
+typedef boost::shared_ptr<BlobDescriptorExtended> BlobDescriptorExtendedPtr;
+
+typedef std::vector<cv::Point2f> Point2fVec;
+
+typedef boost::shared_ptr<cv::Mat> MatPtr;
 
 
 #endif /* TYPES_H_ */

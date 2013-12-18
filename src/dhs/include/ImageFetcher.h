@@ -43,6 +43,11 @@ class ImageFetcher
 		 * Potentially discards the first frame
 		 */
 		int GetFrame(cv::Mat& frame);
+		/*
+		 * Returns the most recent frame in memory, regardless of how old it is
+		 * or 0 if there is no frame
+		 */
+		int GetMostRecentFrame(cv::Mat& frame);
 		inline bool IsUpdated() {return updated_;}
 		std::string getTopicName() const;
 
@@ -60,4 +65,7 @@ class ImageFetcher
 		void convertMsgToCvImagePtr(const sensor_msgs::ImageConstPtr& msg, cv_bridge::CvImagePtr& raw_ptr);
 
 		int sequence_number_;
+
+		void printSubscriberCount(const ros::WallTimerEvent&);
+		ros::WallTimer startup_timer_;
 };

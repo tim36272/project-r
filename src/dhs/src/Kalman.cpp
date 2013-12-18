@@ -17,7 +17,14 @@
  */
 
 #include "Kalman.h"
+Kalman::Kalman() {
+	initialized_ = false;
+}
 Kalman::Kalman(const cv::Rect& measurement) {
+	init(measurement);
+}
+
+void Kalman::init(const cv::Rect& measurement) {
 	//this whole function uses Mat::at for convenience, which is slow, but
 	//this code shouldn't be called often
 
@@ -70,9 +77,15 @@ Kalman::Kalman(const cv::Rect& measurement) {
 		dimension_filter_.statePost.copyTo(dimension_filter_.statePre);
 
 		bounding_rect_ = measurement;
+
+		initialized_ = true;
 }
 
 void Kalman::update(const cv::Rect* measurement) {
+	if(!initialized_) {
+		init(*measurement);
+		return;
+	}
 	//prediction step
 		//position
 		location_estimate_ = position_filter_.predict();

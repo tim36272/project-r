@@ -97,22 +97,22 @@ void Worker::callback(const ros::TimerEvent& event) {
 
 	//process the frames
 	//first: get significant blobs
-	std::cout<<"finding blobs"<<std::endl;
+//	std::cout<<"finding blobs"<<std::endl;
 	findBlobs();
 
-	std::cout<<"updating blobs"<<std::endl;
+//	std::cout<<"updating blobs"<<std::endl;
 	//second: try to update existing blobs
 	updateBlobs(sequence_number);
 
-	std::cout<<"adding blobs"<<std::endl;
+//	std::cout<<"adding blobs"<<std::endl;
 	//third: add remaining blobs as new blobs
 	addBlobs(sequence_number);
 
-	std::cout<<"culling blobs"<<std::endl;
+//	std::cout<<"culling blobs"<<std::endl;
 	//fourth: remove blobs that were only seen for one frame
 	cullBlobs(sequence_number);
 
-	std::cout<<"publishing blobs"<<std::endl;
+//	std::cout<<"publishing blobs"<<std::endl;
 	//fifth: publish blobs over ros
 	publishBlobs(sequence_number);
 
@@ -122,8 +122,6 @@ void Worker::callback(const ros::TimerEvent& event) {
 		//draw the blob's bounding rect
 		cv::rectangle(test_output,blobs_[i]->CurrentBound(),cv::Scalar(rand()%128+128,rand()%128+128,rand()%128+128),5);
 	}
-	cv::imshow("all blobs",test_output);
-	cv::waitKey(1);
 }
 
 void Worker::findBlobs() {
@@ -258,7 +256,6 @@ void Worker::publishBlobs(int sequence_number) {
 		utility::serializeContour((*cursor)->contour_,msg->contour);
 
 		//TODO:put in contour points
-		std::cout<<"publishing message"<<std::endl;
 		output_stream_.publish(msg);
 
 	}

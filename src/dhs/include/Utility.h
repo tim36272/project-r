@@ -21,36 +21,56 @@
 #include <opencv2/opencv.hpp>
 #include "Types.h"
 
+#define ASYMMETRIC_COLOR 128
 
 namespace utility {
+/*
+ * OpenCV related utilities
+ */
 ColorPair GetColors(const Contour& contour,const cv::Mat& image);
 bool Overlap(const cv::Rect& first, const cv::Rect& second);
-//Attemps to combine the contours, the number of contours in the final set will
+//Attempts to combine the contours, the number of contours in the final set will
 //be less than or equal to the number in the input set
 void CombineContours(const cv::Size& mat_size,ContourList* contours);
 cv::Rect UpperHalf(const cv::Rect& bound);
 cv::Rect LowerHalf(const cv::Rect& bound);
 cv::Point Center(const cv::Rect& bound);
+cv::Point BottomLeft(const cv::Rect& bound);
 cv::Scalar At(const cv::Mat frame, const cv::Point location);
 //contours is not const because upon returning, it+candidates == input contours
 void getCandidates(const cv::Rect& bound, ContourList& contours, ContourList* candidates);
+//checks if a rect has grown or shrank more than factor
+bool changedMoreThanFactor(const cv::Rect& first, const cv::Rect& second, double factor);
 //cannot be const because it returns a non-const iterator
 //but this function does not modify the ContourList
 ContourListIt findLargestContour(ContourList& contours);
-
 //merges all of second into first
 void merge(ContourList& first,const ContourList& second);
-
+void getUpwardProjection(const cv::Mat& input,std::vector<int>* output);
+int getHorizontalMedian(const cv::Mat& input);
+void floodConcaveRegions(cv::Mat* image);
+void recolorNonSymmetricRegions(int symmetry_axis,cv::Mat* image);
+void removeSymmetricRegions(int symmetry_axis,cv::Mat* image);
+void visualizeVector(const std::string& name,const std::vector<double>& vec);
+void visualizeVector(const std::string& name,const std::vector<float>& vec);
+void visualizeVector(const std::string& name,const cv::Mat& vec_as_mat);
+cv::Point2f centroid(const cv::Moments& moments);
+double computeSimilarity(const cv::Mat& current_view , const cv::Mat& template_view);
+cv::Mat getPowerSpectrum(const cv::Mat& data);
+cv::Mat getMeanPowerSpectrum(const cv::Mat& similarities,int current_frame, int num_spectrums);
+boost::shared_ptr<std::vector<int> > findSignificantPeaks(const cv::Mat& data);
+/*
+ * ROS related utilities
+ */
+void setLoggerDebug();
 void serializeContour(const Contour& contour,std::vector<int>& blob);
 void deSerializeContour(const std::vector<int>& blob,Contour& contour);
 
-void getUpwardProjection(const cv::Mat& input,std::vector<int>* output);
-
-int getHorizontalMedian(const cv::Mat& input);
-
-void recolorNonSymmetricRegions(int symmetry_axis,cv::Mat* image);
-
-cv::Point2f centroid(const cv::Moments& moments);
+/*
+ * Numeric utilities
+ */
+double mean(const std::vector<float>& data);
+double stdDeviation(double mean, const std::vector<float>& data);
 
 } //namespace utility
 

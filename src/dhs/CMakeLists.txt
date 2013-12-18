@@ -162,6 +162,10 @@ add_library(BlobDescriptor src/BlobDescriptor.cpp)
 target_link_libraries(BlobDescriptor ${catkin_LIBRARIES})
 link_libraries(BlobDescriptor)
 
+add_library(BlobDescriptorExtended src/BlobDescriptorExtended.cpp)
+target_link_libraries(BlobDescriptorExtended ${catkin_LIBRARIES})
+link_libraries(BlobDescriptorExtended)
+
 add_library(ProcessorNode src/ProcessorNode.cpp)
 target_link_libraries(ProcessorNode ${catkin_LIBRARIES})
 link_libraries(ProcessorNode)

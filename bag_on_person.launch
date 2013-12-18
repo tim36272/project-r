@@ -1,16 +1,20 @@
-	<launch>
-		<include file="$(find dhs)/../../rgb_segmentation.launch"/>
+<launch>
+	<include file="$(find dhs)/../../depth_registered_segmentation.launch"/>
+	<include file="$(find dhs)/../../rgb_segmentation.launch"/>
+	
+	
+<node pkg="dhs" type="blob_descriptor" name="blob_descriptor" output="screen">
+	<remap from="segmentation_in" to="/camera/depth_registered/segmentation" />
+	<remap from="rgb_in" to="/camera/rgb/gaussian_filtered" />
+	<remap from="depth_in" to="/camera/depth_registered/image_raw" />			
+	<remap from="blobs_out" to="/camera/depth_registered/blobs" />
+</node>
+	
+	<!--launch-prefix="xterm -e gdb -args"-->
+<node pkg="dhs" type="BagOnPersonProcessor" name="BagOnPerson" output="screen">
+	<remap from="blobs_in" to="/camera/depth_registered/blobs" />
+	<remap from="events_out" to="/camera/depth_registered/events/bag_on_person" />
+	<remap from="rgb_in" to="/camera/rgb/image_color" />
+</node>
 		
-	<node pkg="dhs" type="blob_descriptor" name="blob_descriptor" output="screen" launch-prefix="xterm -e gdb --args">
-		<remap from="segmentation_in" to="/camera/rgb/segmentation" />
-		<remap from="rgb_in" to="/camera/rgb/gaussian_filtered" />
-		<remap from="depth_in" to="/camera/depth_registered/image_raw" />			
-		<remap from="blobs_out" to="/camera/rgb/blobs" />
-	</node>
-		
-	<node pkg="dhs" type="BagOnPersonProcessor" name="BagOnPerson" output="screen">
-		<remap from="blobs_in" to="/camera/rgb/blobs" />
-		<remap from="events_out" to="/camera/rgb/events/bag_on_person" />
-	</node>
-			
-	</launch>
+</launch>

@@ -99,7 +99,6 @@ std::string BlobDescriptorFetcher::getTopic() {
 }
 
 void BlobDescriptorFetcher::receiver(const dhs::blob& msg) {
-	std::cout<<"getting a blob"<<std::endl;
 	//deserialize the message into the map
 	//get colors
 	ColorPair colors;
@@ -120,19 +119,17 @@ void BlobDescriptorFetcher::receiver(const dhs::blob& msg) {
 	std::pair<int,BlobDescriptorPtr> insert_val(msg.id,new_blob);
 	std::pair<std::map<int,BlobDescriptorPtr>::iterator,bool > returned = data_.insert(insert_val);
 	//if returned.second then we're done, otherwise need to update the existing blob
-	std::cout<<"inserted"<<std::endl;
 	if(!returned.second) {
-		std::cout<<"updating"<<std::endl;
 		returned.first->second->history_.push_back(HistoryDescriptor(msg.last_seen,-1,position));
 		returned.first->second->colors_ = colors;
 	}
 
 	//deserialize contour
 	utility::deSerializeContour(msg.contour,returned.first->second->contour_);
-	std::cout<<"Got blob with ID: "<<data_[msg.id]->id_<<std::endl;
+	std::cout<<"Got blob #"<<data_[msg.id]->id_<<std::endl;
 
 	//get centroid
-	returned.first->second->centroid_ = cv::Point2f(msg.centroid[0],msg.centroid[0]);
+	returned.first->second->centroid_ = cv::Point2f(msg.centroid[0],msg.centroid[1]);
 
 	//add this id to the blobs_updated array so something else can go do processing on it
 	blobs_updated_.push_back(msg.id);

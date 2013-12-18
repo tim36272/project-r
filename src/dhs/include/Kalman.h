@@ -32,13 +32,16 @@ public:
 	//Disallow empty construction
 	Kalman();
 	Kalman(const cv::Rect& measurement);
+	void init(const cv::Rect& measurement);
 	//measurement can be NULL, means update without measurement
 	void update(const cv::Rect* measurement);
 	cv::Rect bound() const {return bounding_rect_;}
+	bool initialized() { return initialized_; }
 private:
 	cv::KalmanFilter position_filter_,dimension_filter_;
 	cv::Mat location_estimate_,dimension_estimate_;
 	cv::Rect bounding_rect_;
+	bool initialized_;
 };
 
 #endif
