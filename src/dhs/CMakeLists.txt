@@ -17,8 +17,6 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 #add_definitions(${OpenCV_DEFINITIONS})
 MESSAGE(STATUS "OpenCV at: ${OpenCV_INCLUDE_DIRS}")
 
-set(ROS_BUILD_TYPE Debug)
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
