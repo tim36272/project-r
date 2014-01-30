@@ -31,10 +31,12 @@ public:
 	DISALLOW_COPY_AND_ASSIGN(BlobDescriptor);
 	DISALLOW_DEFAULT_CONSTRUCTION(BlobDescriptor);
 	BlobDescriptor(int id);
+	virtual ~BlobDescriptor() {}
 	/*
 	 * input_image is a color image with black in background areas
 	 */
 	void update(int sequence_number, Contour& swapped_contour);
+	virtual void update_child() {}
 	//serialize the most recent contour
 	void serializeContour(ros::Publisher& pub);
 	void deserializeContour(int sequence_number, const dhs::contour::_contour_type& contour);

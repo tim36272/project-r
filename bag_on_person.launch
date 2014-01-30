@@ -11,7 +11,7 @@
 </node>
 	
 	<!--launch-prefix="xterm -e gdb -args"-->
-<node pkg="dhs" type="BagOnPersonProcessor" name="BagOnPerson" output="screen">
+<node pkg="dhs" type="BagOnPersonProcessor" name="BagOnPerson" output="screen" launch-prefix="xterm -e gdb --args">
 	<remap from="blobs_in" to="/camera/depth_registered/blobs" />
 	<remap from="events_out" to="/camera/depth_registered/events/bag_on_person" />
 	<remap from="rgb_in" to="/camera/rgb/image_color" />

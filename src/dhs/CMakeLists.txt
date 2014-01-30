@@ -142,7 +142,7 @@ target_link_libraries(Images ${catkin_LIBRARIES})
 link_libraries(Images)
 
 
-add_library(Utility src/Utility.cpp src/BlobDescriptor.cpp src/ProcessorNode.cpp)
+add_library(Utility src/Utility.cpp src/BlobDescriptor.cpp src/ProcessorNode.cpp src/Periodic.cpp)
 target_link_libraries(Utility ${catkin_LIBRARIES})
 link_libraries(Utility)
 

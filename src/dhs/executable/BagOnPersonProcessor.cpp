@@ -24,6 +24,7 @@
 
 //project includes
 #include "Utility.h"
+#include "ImageFetcher.h"
 #include "ProcessorNode.h"
 #include "EventCodes.h"
 #include "BlobDescriptor.h"
@@ -35,14 +36,16 @@ public:
 	BlobDescriptorDecorated(int id) : super::BlobDescriptor(id) {}
 	~BlobDescriptorDecorated() {}
 
-	void update(int sequence_number, Contour& swapped_contour) {
-		super::update(sequence_number,swapped_contour);
-
+	void update_child() {
 		//calculate filtered bound
 		filter_.update(&*raw_bounds_.rbegin());
 
 		//store filtered bound
 		filtered_bounds_.push_back(filter_.bound());
+
+		//calculate moments
+		moments_ = cv::moments(getLastContour());
+		ROS_DEBUG_STREAM("Calculated moments for id"<<Id()<<", centroid: "<<getCentroid());
 	}
 
 	//get an arbitrary filtered bound
@@ -58,18 +61,19 @@ public:
 	}
 	//get most recent filtered bound
 	cv::Rect getLastFilteredBound() const {
-		return *filtered_bounds_.rbegin();
+		assert(filtered_bounds_.size()>0);
+		return *(filtered_bounds_.rbegin());
 	}
 	//return the mass center
 	cv::Point2f getCentroid() const {
 		return cv::Point2f( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
 	}
+	Periodic tracker_;
+	Kalman filter_;
+	cv::Moments moments_;
 private:
 	std::vector<cv::Rect> filtered_bounds_;
 	//tools
-	Kalman filter_;
-	cv::Moments moments_;
-	Periodic tracker_;
 };
 typedef boost::shared_ptr<BlobDescriptorDecorated> BlobDescriptorDecPtr;
 
@@ -78,7 +82,7 @@ public:
 	DISALLOW_DEFAULT_CONSTRUCTION(BagOnPersonProcessor);
 	BagOnPersonProcessor(const std::string& blob_topic,const std::string& event_topic,const std::string& rgb_topic);
 	void callback(const ros::TimerEvent& event);
-	void blobCallback(dhs::contourPtr& msg);
+	void blobCallback(dhs::contourPtr msg);
 
 	void init();
 	cv::VideoWriter writer_;
@@ -89,7 +93,6 @@ private:
 	std::map<int,BlobDescriptorDecPtr> blobs_;
 	std::vector<int> blobs_updated_;
 	ImageFetcher rgb_input_stream;
-	cv::Moments moments_;
 };
 
 
@@ -111,14 +114,13 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 BagOnPersonProcessor::BagOnPersonProcessor(const std::string& blob_topic,const std::string& event_topic,const std::string& rgb_topic) :
-	input_stream_(blob_topic),
 	rgb_input_stream(rgb_topic){
 	event_name_ = BagOnPersonName;
 	event_code_ = BagOnPersonCode;
 	output_topic_ = event_topic;
 	init();
 	writer_.open("/home/tim/out.avi",CV_FOURCC('D','I','V','X'),15,cv::Size(640,480),true);
-	input_stream_ = handle_.subscribe("blob_topic",3,&BagOnPersonProcessor::blobCallback,this);
+	input_stream_ = handle_.subscribe(blob_topic,3,&BagOnPersonProcessor::blobCallback,this);
 }
 
 void BagOnPersonProcessor::init() {
@@ -193,7 +195,7 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 		if(!current_blob->tracker_.set_up()) {
 			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" added to periodicity tracker");
 			//this is the first time the blob has been seen
-			cv::Point2f centroid( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
+			cv::Point2f centroid( current_blob->moments_.m10/current_blob->moments_.m00 , current_blob->moments_.m01/current_blob->moments_.m00 );
 			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),centroid,blob_visual);
 		} else if(utility::changedMoreThanFactor( //the bound has changed a lot since first view, so reset all the periodicity tracking stuff
 				current_blob->getRawBound(0),
@@ -201,7 +203,8 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" changed a lot, resetting its track");
 			//the blob changed a lot so dump everything and start over
 			//this typcially occurs a few times as the blob is entering the scene
-			cv::Point2f centroid( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
+			cv::Point2f centroid( current_blob->moments_.m10/current_blob->moments_.m00 , current_blob->moments_.m01/current_blob->moments_.m00 );
+			ROS_DEBUG_STREAM("Resetting the tracker for id: "<<current_blob->Id()<<", centroid is: "<<centroid);
 			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),centroid,blob_visual);
 		} else {
 			//blob has already been seen, just check for periodicity
@@ -219,6 +222,7 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 
 			current_blob->tracker_.addFrame(warped_blob);
 		}
+		ROS_DEBUG("Done checking periodicity");
 
 		//draw interesting regions
 		cv::Mat rgb;
@@ -242,7 +246,7 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 	cv::waitKey(1);
 }
 
-void BagOnPersonProcessor::blobCallback(dhs::contourPtr& msg) {
+void BagOnPersonProcessor::blobCallback(dhs::contourPtr msg) {
 	//find the blob to match this to
 	try {
 		blobs_.at(msg->id)->deserializeContour(msg->header.seq,msg->contour);

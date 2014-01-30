@@ -34,6 +34,9 @@ void BlobDescriptor::update(int sequence_number, Contour& swapped_contour) {
 
 	//store raw bound
 	raw_bounds_.push_back(cv::boundingRect(*contours_.rbegin()));
+
+	//call child updater
+	update_child();
 }
 
 void BlobDescriptor::serializeContour(ros::Publisher& pub) {
@@ -98,44 +101,3 @@ int BlobDescriptor::lastSeen() const{
 const Contour& BlobDescriptor::getLastContour() const{
 	return *contours_.rbegin();
 }
-
-
-
-/*
-void BlobDescriptorFetcher::receiver(const dhs::blob& msg) {
-	//deserialize the message into the map
-	//get colors
-	ColorPair colors;
-	if(msg.colors.size() >=3) {
-		colors.first[0] = msg.colors[0];
-		colors.first[1] = msg.colors[1];
-		colors.first[2] = msg.colors[2];
-	}
-	if(msg.colors.size() >=6) {
-		colors.second[0] = msg.colors[3];
-		colors.second[1] = msg.colors[4];
-		colors.second[2] = msg.colors[5];
-	}
-
-	//get position/dimensions
-	cv::Rect position(msg.filtered_position[0],msg.filtered_position[1],msg.filtered_size[0],msg.filtered_size[1]);
-	BlobDescriptorPtr new_blob(new BlobDescriptor(msg.first_seen,msg.id,colors,position,msg.depth,NULL));
-	std::pair<int,BlobDescriptorPtr> insert_val(msg.id,new_blob);
-	std::pair<std::map<int,BlobDescriptorPtr>::iterator,bool > returned = data_.insert(insert_val);
-	//if returned.second then we're done, otherwise need to update the existing blob
-	if(!returned.second) {
-		returned.first->second->history_.push_back(HistoryDescriptor(msg.last_seen,-1,position));
-		returned.first->second->colors_ = colors;
-	}
-
-	//deserialize contour
-	utility::deSerializeContour(msg.contour,returned.first->second->contour_);
-	std::cout<<"Got blob #"<<data_[msg.id]->id_<<std::endl;
-
-	//get centroid
-	returned.first->second->centroid_ = cv::Point2f(msg.centroid[0],msg.centroid[1]);
-
-	//add this id to the blobs_updated array so something else can go do processing on it
-	blobs_updated_.push_back(msg.id);
-}
-*/
