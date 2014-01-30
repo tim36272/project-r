@@ -15,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include <ros/console.h>
 // A macro to disallow the copy constructor and operator= functions
 // This should be used in the private: declarations for a class
 #include "Types.h"
@@ -27,3 +27,7 @@
 // This should be used in the private: declarations for a class
 #define DISALLOW_DEFAULT_CONSTRUCTION(TypeName) \
   TypeName();
+
+// A macro to set the ROS log level for the active node to debug
+#define setLoggerDebug() if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) ros::console::notifyLoggerLevelsChanged();
+

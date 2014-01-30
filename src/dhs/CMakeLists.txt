@@ -36,6 +36,7 @@ add_message_files(
    color.msg
    blob.msg
    event.msg
+   contour.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -136,37 +137,18 @@ include_directories(include
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_library(ImageFetcher src/ImageFetcher.cpp)
-target_link_libraries(ImageFetcher ${catkin_LIBRARIES})
-link_libraries(ImageFetcher)
+add_library(Images src/ImageFetcher.cpp src/ImageSender.cpp src/SynchronousImageFetcher.cpp)
+target_link_libraries(Images ${catkin_LIBRARIES})
+link_libraries(Images)
 
-add_library(ImageSender src/ImageSender.cpp)
-target_link_libraries(ImageSender ${catkin_LIBRARIES})
-link_libraries(ImageSender)
 
-add_library(SynchronousImageFetcher src/SynchronousImageFetcher.cpp)
-target_link_libraries(SynchronousImageFetcher ${catkin_LIBRARIES})
-link_libraries(SynchronousImageFetcher)
-
-add_library(Utility src/Utility.cpp)
+add_library(Utility src/Utility.cpp src/BlobDescriptor.cpp src/ProcessorNode.cpp)
 target_link_libraries(Utility ${catkin_LIBRARIES})
 link_libraries(Utility)
 
 add_library(Kalman src/Kalman.cpp)
 target_link_libraries(Kalman ${catkin_LIBRARIES})
 link_libraries(Kalman)
-
-add_library(BlobDescriptor src/BlobDescriptor.cpp)
-target_link_libraries(BlobDescriptor ${catkin_LIBRARIES})
-link_libraries(BlobDescriptor)
-
-add_library(BlobDescriptorExtended src/BlobDescriptorExtended.cpp)
-target_link_libraries(BlobDescriptorExtended ${catkin_LIBRARIES})
-link_libraries(BlobDescriptorExtended)
-
-add_library(ProcessorNode src/ProcessorNode.cpp)
-target_link_libraries(ProcessorNode ${catkin_LIBRARIES})
-link_libraries(ProcessorNode)
 
 ## Add gtest based cpp test target and link libraries
  catkin_add_gtest(utest test/utest.cpp)
@@ -183,8 +165,8 @@ target_link_libraries(image_filter ${catkin_LIBRARIES})
 add_executable (blob_descriptor executable/blob_descriptor.cpp)
 target_link_libraries(blob_descriptor ${catkin_LIBRARIES})
 
-add_executable (interface executable/interface.cpp)
-target_link_libraries(interface ${catkin_LIBRARIES})
+#add_executable (interface executable/interface.cpp)
+#target_link_libraries(interface ${catkin_LIBRARIES})
 
 add_executable (BagOnPersonProcessor executable/BagOnPersonProcessor.cpp)
 target_link_libraries(BagOnPersonProcessor ${catkin_LIBRARIES})

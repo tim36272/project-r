@@ -59,12 +59,7 @@ double computeSimilarity(const cv::Mat& current_view , const cv::Mat& template_v
 cv::Mat getPowerSpectrum(const cv::Mat& data);
 cv::Mat getMeanPowerSpectrum(const cv::Mat& similarities,int current_frame, int num_spectrums);
 boost::shared_ptr<std::vector<int> > findSignificantPeaks(const cv::Mat& data);
-/*
- * ROS related utilities
- */
-void setLoggerDebug();
-void serializeContour(const Contour& contour,std::vector<int>& blob);
-void deSerializeContour(const std::vector<int>& blob,Contour& contour);
+
 
 /*
  * Numeric utilities

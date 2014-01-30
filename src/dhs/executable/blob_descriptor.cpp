@@ -22,16 +22,64 @@
 
 //library includes
 #include <ros/ros.h>
-#include "dhs/blob.h"
+#include "dhs/contour.h"
 
 //project includes
 #include "../include/Utility.h"
 #include "../include/SynchronousImageFetcher.h"
 #include "../include/BlobDescriptor.h"
 
-//constants
-//experimentally chosen
+//constants (experimentally chosen)
 static const int kMinContourArea = 1000;
+
+/*
+ * Decorated BlobDescriptor includes Kalman Filter and Moments
+ */
+class BlobDescriptorDecorated : public BlobDescriptor{
+public:
+	typedef BlobDescriptor super;
+	BlobDescriptorDecorated(int id) : super::BlobDescriptor(id) {}
+	~BlobDescriptorDecorated() {}
+
+	void update(int sequence_number, Contour& swapped_contour) {
+		super::update(sequence_number,swapped_contour);
+
+		//calculate filtered bound
+		filter_.update(&*raw_bounds_.rbegin());
+
+		//store filtered bound
+		filtered_bounds_.push_back(filter_.bound());
+	}
+
+	//get an arbitrary filtered bound
+	cv::Rect getFilteredBound(int index) const {
+		try {
+			return filtered_bounds_.at(index);
+		} catch (const std::out_of_range& oor){
+			std::cout<<"requested out of range blob"<<std::endl;
+			assert(false);
+		}
+		//dummy return to make the compiler happy
+		return (cv::Rect());
+	}
+	//get most recent filtered bound
+	cv::Rect getLastFilteredBound() const {
+		return *filtered_bounds_.rbegin();
+	}
+	//return the mass center
+	cv::Point2f getCentroid() const {
+		return cv::Point2f( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
+	}
+private:
+	std::vector<cv::Rect> filtered_bounds_;
+	//tools
+	Kalman filter_;
+	cv::Moments moments_;
+};
+typedef boost::shared_ptr<BlobDescriptorDecorated> BlobDescriptorDecPtr;
+typedef std::vector<BlobDescriptorDecPtr> BlobDescriptorDecPtrVector;
+typedef BlobDescriptorDecPtrVector::iterator BlobDescriptorDecPtrVectorIt;
+typedef BlobDescriptorDecPtrVector::const_iterator BlobDescriptorDecPtrVectorConstIt;
 
 class Worker {
 	//this class is only used to provide data to the ros::timer
@@ -40,14 +88,14 @@ public:
 		input_stream_(first_topic,second_topic,third_topic),
 		next_id(0),
 		handle_() {
-		output_stream_ = handle_.advertise<dhs::blob>(output_topic,100);
+		output_stream_ = handle_.advertise<dhs::contour>(output_topic,100);
 	}
 
 	void callback(const ros::TimerEvent& event);
 
 	SynchronousImageFetcher input_stream_;
 	ros::Publisher output_stream_;
-	BlobDescriptorPtrVector blobs_;
+	BlobDescriptorDecPtrVector blobs_;
 	ContourList contours_;
 
 	cv::Mat segmentation_,rgb_,depth_;
@@ -72,6 +120,7 @@ bool isContourSmall(const Contour& rhs) {
 int main(int argc, char* argv[]) {
 	ros::init(argc,argv,"blob_descriptor");
 	ros::NodeHandle handle("~");
+	setLoggerDebug();
 
 	//loop at 60 hz since the camera runs half that fast
 	Worker worker("segmentation_in","rgb_in","depth_in","blobs_out");
@@ -97,7 +146,7 @@ void Worker::callback(const ros::TimerEvent& event) {
 
 	//process the frames
 	//first: get significant blobs
-//	std::cout<<"finding blobs"<<std::endl;
+	ROS_DEBUG("Finding blobs");
 	findBlobs();
 
 //	std::cout<<"updating blobs"<<std::endl;
@@ -115,13 +164,6 @@ void Worker::callback(const ros::TimerEvent& event) {
 //	std::cout<<"publishing blobs"<<std::endl;
 	//fifth: publish blobs over ros
 	publishBlobs(sequence_number);
-
-	//testing: show the blobs
-	cv::Mat test_output(rgb_.size(),CV_8UC3,cv::Scalar(0));
-	for(int i=0;i<blobs_.size();i++) {
-		//draw the blob's bounding rect
-		cv::rectangle(test_output,blobs_[i]->CurrentBound(),cv::Scalar(rand()%128+128,rand()%128+128,rand()%128+128),5);
-	}
 }
 
 void Worker::findBlobs() {
@@ -136,13 +178,12 @@ void Worker::findBlobs() {
 }
 void Worker::updateBlobs(int sequence_number) {
 	//for each blob in blobs_ find all the contours in contours_ which are in the same place
-	BlobDescriptorPtrVectorIt blob_cursor = blobs_.begin();
+	BlobDescriptorDecPtrVectorIt blob_cursor = blobs_.begin();
 
 	//the number of blobs should be small
 	for(;blob_cursor!=blobs_.end();blob_cursor++) {
-//		std::cout<<"getting candidates"<<std::endl;
 		ContourList candidates;
-		utility::getCandidates((*blob_cursor)->CurrentBound(),contours_,&candidates);
+		utility::getCandidates((*blob_cursor)->getLastFilteredBound(),contours_,&candidates);
 
 		//now there is a list of contours in candidates which are sufficiently
 		//close to the blob or no contours at all (blob disappeared)
@@ -153,22 +194,15 @@ void Worker::updateBlobs(int sequence_number) {
 
 		//if there is more than one candidate try to merge them
 		if(candidates.size() > 1) {
-			//This next function is not yet implemented
 			utility::CombineContours(rgb_.size(),&candidates);
 		}
 
 		//find the largest candidate
 		ContourListIt max_at = utility::findLargestContour(candidates);
 
-		//get bounding box of contour
-		cv::Rect bound = cv::boundingRect(*max_at);
-
-		//get depth position of this contour
-		int depth = depth_.at<uchar>(utility::Center(bound));
-
 		//update the blob with the largest contour
 		//TODO: check if the blob is the right color
-		(*blob_cursor)->update(sequence_number,bound,depth,&*max_at);
+		(*blob_cursor)->update(sequence_number,*max_at);
 
 		candidates.erase(max_at);
 
@@ -193,7 +227,8 @@ void Worker::addBlobs(int sequence_number) {
 		//get depth position of this contour
 		int depth = 0;//depth_.at<uchar>(utility::Center(bound));
 
-		BlobDescriptorPtr temp(new BlobDescriptor(sequence_number,next_id++,colors,bound,depth,&*contour_cursor));
+		BlobDescriptorDecPtr temp(new BlobDescriptorDecorated(next_id++));
+		temp->update(sequence_number,*contour_cursor);
 		assert(temp->Id()==(next_id-1));
 		blobs_.push_back(temp);
 	}
@@ -203,11 +238,11 @@ void Worker::cullBlobs(int sequence_number) {
 	if(blobs_.empty()) {
 		return;
 	}
-	BlobDescriptorPtrVectorIt cursor = blobs_.begin();
-	BlobDescriptorPtrVector new_blobs;
+	BlobDescriptorDecPtrVectorIt cursor = blobs_.begin();
+	BlobDescriptorDecPtrVector new_blobs;
 	for(;cursor !=blobs_.end();cursor++) {
-		int last_seen = (*cursor)->LastSeen();
-		int first_seen = (*cursor)->FirstSeen();
+		int last_seen = (*cursor)->lastSeen();
+		int first_seen = (*cursor)->firstSeen();
 		if(first_seen!=sequence_number) {
 			if(last_seen-first_seen!= 0) {
 				//it is old enough, add it to the new blobs list
@@ -223,41 +258,14 @@ void Worker::cullBlobs(int sequence_number) {
 }
 
 void Worker::publishBlobs(int sequence_number) {
-	BlobDescriptorPtrVectorConstIt cursor = blobs_.begin();
+	ROS_DEBUG("publishing blobs");
+	BlobDescriptorDecPtrVectorConstIt cursor = blobs_.begin();
 	for(;cursor!=blobs_.end();cursor++) {
-		if((*cursor)->LastSeen()!=sequence_number) {
+		//don't publish blobs which were not seen this run
+		if((*cursor)->lastSeen()!=sequence_number) {
 			continue;
 		}
-		//generate the message
-		dhs::blobPtr msg(new dhs::blob());
-		msg->colors.push_back((*cursor)->Colors().first[0]);
-		msg->colors.push_back((*cursor)->Colors().first[1]);
-		msg->colors.push_back((*cursor)->Colors().first[2]);
-		msg->colors.push_back((*cursor)->Colors().second[0]);
-		msg->colors.push_back((*cursor)->Colors().second[1]);
-		msg->colors.push_back((*cursor)->Colors().second[2]);
-
-		msg->filtered_position[0] = (*cursor)->CurrentBound().x;
-		msg->filtered_position[1] = (*cursor)->CurrentBound().y;
-
-		msg->filtered_size[0] = (*cursor)->CurrentBound().width;
-		msg->filtered_size[1] = (*cursor)->CurrentBound().height;
-
-		msg->first_seen = (*cursor)->FirstSeen();
-		msg->id = (*cursor)->Id();
-		msg->last_seen = (*cursor)->LastSeen();
-
-		msg->depth = (*cursor)->getDepth();
-
-		msg->centroid[0] = (*cursor)->getCentroid().x;
-		msg->centroid[1] = (*cursor)->getCentroid().y;
-
-
-		utility::serializeContour((*cursor)->contour_,msg->contour);
-
-		//TODO:put in contour points
-		output_stream_.publish(msg);
-
+		(*cursor)->serializeContour(output_stream_);
 	}
 }
 

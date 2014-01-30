@@ -129,12 +129,6 @@ cv::Scalar At(const cv::Mat frame, const cv::Point location) {
 
 	return out;
 }
-void setLoggerDebug() {
-	log4cxx::LoggerPtr my_logger =
-	           log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
-	my_logger->setLevel(
-	           ros::console::g_level_lookup[ros::console::levels::Debug]);
-}
 void getCandidates(const cv::Rect& blob_bound, ContourList& contours, ContourList* candidates) {
 	ContourListConstIt contour_cursor = contours.begin();
 	ContourList list_to_replace_contours_with;
@@ -188,28 +182,6 @@ ContourListIt findLargestContour(ContourList& contours) {
 void merge(ContourList& first,const ContourList& second) {
 	for(ContourListConstIt cursor=second.begin();cursor!=second.end();cursor++) {
 		first.push_back(*cursor);
-	}
-}
-void serializeContour(const Contour& contour,std::vector<int>& out) {
-	//for each point in the contour, put it in the blob
-	ContourConstIt cursor = contour.begin();
-	for(;cursor!=contour.end();cursor++) {
-		out.push_back(cursor->x);
-		out.push_back(cursor->y);
-	}
-}
-
-void deSerializeContour(const std::vector<int>& in,Contour& out) {
-	out.clear();
-	//for each point in the contour, put it in the blob
-	std::vector<int>::const_iterator cursor = in.begin();
-	assert(in.size()%2==0);
-	for(;cursor!=in.end();) {
-		cv::Point pt(*(cursor++),*(cursor++));
-		int temp = pt.x;
-		pt.x = pt.y;
-		pt.y=temp;
-		out.push_back(pt);
 	}
 }
 

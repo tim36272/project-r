@@ -19,87 +19,51 @@
 #ifndef BLOBDESCRIPTOR_H_
 #define BLOBDESCRIPTOR_H_
 #include <utility>
-#include <boost/shared_ptr.hpp>
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
-#include "Kalman.h"
 #include "common.h"
-#include "dhs/blob.h"
+#include "dhs/contour.h"
+#include "Kalman.h"
 
-//a small helper class
-class HistoryDescriptor {
-public:
-	//disallow default constructor
-	HistoryDescriptor();
-	HistoryDescriptor(int timestamp,int depth_position, const cv::Rect& location);
-	//holds the sequence number of this observation
-	int timestamp_;
-	//holds the position at timestamp_ time
-	cv::Rect location_;
-	//holds depth position, if applicable
-	int depth_position_;
-};
-
-class BlobDescriptorFetcher;
-
+//describes one connected blob
 class BlobDescriptor {
-	public:
-	DISALLOW_COPY_AND_ASSIGN(BlobDescriptor);
-	BlobDescriptor() {}
-	BlobDescriptor(int sequence_number, int id, const ColorPair& colors,const cv::Rect& location,int depth,Contour* contour);
-	//Sets upper/lower halves (maybe)
-	//updates last_seen
-	//updates history (maybe)
-	void update(int sequence_number,const cv::Rect& location, int depth,Contour* contour);
-
-	//accessors
-	//history_.rbegin->location_
-	cv::Rect LastRawBound() const;
-	//filter.bounding_rect()
-	cv::Rect CurrentBound() const;
-	//history_.rbegin->timestamp_
-	int LastSeen() const;
-	//history_.begin->timestamp_
-	int FirstSeen() const;
-	//colors_
-	ColorPair Colors() const;
-	//history_.begin->timestamp_
-	int LastSequenceNumber() const;
-	//id_
-	int Id() const;
-	//history.rbegin->depth_position_;
-	int getDepth() const;
-	//centroid_
-	cv::Point2f getCentroid() const;
-	//get an arbitrary bound
-	cv::Rect getBound(int index) const;
-
-	Contour contour_;
-	protected:
-	int id_;
-	std::vector<HistoryDescriptor> history_;
-	Kalman filter_;
-	ColorPair colors_;
-	cv::Moments moments_;
-	cv::Point2f centroid_;
-	friend class BlobDescriptorFetcher;
-	friend class BlobDescriptorExtendedFetcher;
-};
-
-
-
-class BlobDescriptorFetcher {
 public:
-	DISALLOW_COPY_AND_ASSIGN(BlobDescriptorFetcher);
-	BlobDescriptorFetcher(const std::string& topic);
-	std::map<int,BlobDescriptorPtr > data_;
-	void receiver(const dhs::blob& msg);
-	std::string getTopic();
-	std::vector<int> blobs_updated_;
+	DISALLOW_COPY_AND_ASSIGN(BlobDescriptor);
+	DISALLOW_DEFAULT_CONSTRUCTION(BlobDescriptor);
+	BlobDescriptor(int id);
+	/*
+	 * input_image is a color image with black in background areas
+	 */
+	void update(int sequence_number, Contour& swapped_contour);
+	//serialize the most recent contour
+	void serializeContour(ros::Publisher& pub);
+	void deserializeContour(int sequence_number, const dhs::contour::_contour_type& contour);
+
+	/*
+	 * Accessors
+	 */
+	//get this blob's unique identifier
+	int Id() const;
+	//get an arbitrary raw bound
+	cv::Rect getRawBound(int index) const;
+	//get more recent raw bound
+	cv::Rect getLastRawBound() const;
+	//get the first timestamp seen
+	int firstSeen() const;
+	//get the last timestamp seen
+	int lastSeen() const;
+	//get most recent contour
+	const Contour& getLastContour() const;
+
+
 protected:
-	ros::NodeHandle handle_;
-	ros::Subscriber blob_subscriber_;
+	int id_;
+
+	//things that describe a blob
+	std::vector<Contour> contours_;
+	std::vector<int> sequence_numbers_;
+	std::vector<int> depths_;
+	std::vector<cv::Rect> raw_bounds_;
+
 };
-
-
 #endif /* BLOBDESCRIPTOR_H_ */

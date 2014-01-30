@@ -26,37 +26,75 @@
 #include "../include/Utility.h"
 #include "../include/ProcessorNode.h"
 #include "../include/EventCodes.h"
-#include "../include/BlobDescriptorExtended.h"
+#include "../include/BlobDescriptor.h"
+
+class BlobDescriptorDecorated : public BlobDescriptor{
+public:
+	typedef BlobDescriptor super;
+	BlobDescriptorDecorated(int id) : super::BlobDescriptor(id) {}
+	~BlobDescriptorDecorated() {}
+
+	void update(int sequence_number, Contour& swapped_contour) {
+		super::update(sequence_number,swapped_contour);
+
+		//calculate filtered bound
+		filter_.update(&*raw_bounds_.rbegin());
+
+		//store filtered bound
+		filtered_bounds_.push_back(filter_.bound());
+	}
+
+	//get an arbitrary filtered bound
+	cv::Rect getFilteredBound(int index) const {
+		try {
+			return filtered_bounds_.at(index);
+		} catch (const std::out_of_range& oor){
+			std::cout<<"requested out of range blob"<<std::endl;
+			assert(false);
+		}
+		//dummy return to make the compiler happy
+		return (cv::Rect());
+	}
+	//get most recent filtered bound
+	cv::Rect getLastFilteredBound() const {
+		return *filtered_bounds_.rbegin();
+	}
+	//return the mass center
+	cv::Point2f getCentroid() const {
+		return cv::Point2f( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
+	}
+private:
+	std::vector<cv::Rect> filtered_bounds_;
+	//tools
+	Kalman filter_;
+	cv::Moments moments_;
+};
+typedef boost::shared_ptr<BlobDescriptorDecorated> BlobDescriptorDecPtr;
 
 class BagOnPersonProcessor : public ProcessorNode {
 public:
-	BagOnPersonProcessor(const std::string& blob_topic,const std::string& event_topic,const std::string& rgb_topic) :
-		input_stream_(blob_topic),
-		rgb_input_stream(rgb_topic){
-		event_name_ = BagOnPersonName;
-		event_code_ = BagOnPersonCode;
-		output_topic_ = event_topic;
-		init();
-		writer_.open("/home/tim/out.avi",CV_FOURCC('D','I','V','X'),15,cv::Size(640,480),true);
-	}
+	DISALLOW_DEFAULT_CONSTRUCTION(BagOnPersonProcessor);
+	BagOnPersonProcessor(const std::string& blob_topic,const std::string& event_topic,const std::string& rgb_topic);
 	void callback(const ros::TimerEvent& event);
+	void blobCallback(dhs::contourPtr& msg);
 
 	void init();
 	cv::VideoWriter writer_;
 private:
 	DISALLOW_COPY_AND_ASSIGN(BagOnPersonProcessor);
-	DISALLOW_DEFAULT_CONSTRUCTION(BagOnPersonProcessor);
-	BlobDescriptorExtendedFetcher input_stream_;
+	ros::NodeHandle handle_;
+	ros::Subscriber input_stream_;
+	std::map<int,BlobDescriptorDecPtr> blobs_;
+	std::vector<int> blobs_updated_;
 	ImageFetcher rgb_input_stream;
-
-
 };
+
 
 int main(int argc, char* argv[]) {
 	//connect to ros
 	ros::init(argc, argv, "segmentation");
 	//set logger level
-	utility::setLoggerDebug();
+	setLoggerDebug();
 	ros::NodeHandle handle("~");
 
 	BagOnPersonProcessor processor("blobs_in","events_out","rgb_in");
@@ -69,6 +107,16 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
+BagOnPersonProcessor::BagOnPersonProcessor(const std::string& blob_topic,const std::string& event_topic,const std::string& rgb_topic) :
+	input_stream_(blob_topic),
+	rgb_input_stream(rgb_topic){
+	event_name_ = BagOnPersonName;
+	event_code_ = BagOnPersonCode;
+	output_topic_ = event_topic;
+	init();
+	writer_.open("/home/tim/out.avi",CV_FOURCC('D','I','V','X'),15,cv::Size(640,480),true);
+	input_stream_ = handle_.subscribe("blob_topic",3,&BagOnPersonProcessor::blobCallback,this);
+}
 
 void BagOnPersonProcessor::init() {
 	setupOutput();
@@ -76,20 +124,20 @@ void BagOnPersonProcessor::init() {
 
 void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 	//for each blob which was updated this frame
-	if(input_stream_.blobs_updated_.size()==0) {
+	if(blobs_updated_.size()==0) {
 		return;
 	}
 	//TODO: get the size another way
 	cv::Mat output(cv::Size(640,480),CV_8UC1,cv::Scalar(0));
-	std::vector<int>::iterator blob_iterator = input_stream_.blobs_updated_.begin();
-	for(;blob_iterator!=input_stream_.blobs_updated_.end();) {
+	std::vector<int>::iterator blob_iterator = blobs_updated_.begin();
+	for(;blob_iterator!=blobs_updated_.end();) {
 		//just get this blob as a pointer
-		BlobDescriptorExtendedPtr current_blob = input_stream_.data_[*blob_iterator];
+		BlobDescriptorDecPtr current_blob = blobs_[*blob_iterator];
 		/*
 		 * erase this index from the updated list and reset the iterator. This prevents
 		 * jumping past the end of the vector when incrementing the iterator
 		 */
-		input_stream_.blobs_updated_.erase(blob_iterator);
+		blobs_updated_.erase(blob_iterator);
 
 		//TODO: fix the race condition here in which an empty list which
 		//has a blob added to it after here will break the loop
@@ -187,4 +235,17 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 
 	}
 	cv::waitKey(1);
+}
+
+void BagOnPersonProcessor::blobCallback(dhs::contourPtr& msg) {
+	//find the blob to match this to
+	try {
+		blobs_.at(msg->id)->deserializeContour(msg->header.seq,msg->contour);
+	}
+	catch (std::out_of_range&) {
+		BlobDescriptorDecPtr temp(new BlobDescriptorDecorated(msg->id));
+			temp->deserializeContour((int)msg->header.seq,msg->contour);
+			blobs_.insert(std::pair<int,BlobDescriptorDecPtr>(msg->id,temp));
+	}
+	blobs_updated_.push_back(msg->id);
 }

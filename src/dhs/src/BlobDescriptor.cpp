@@ -19,85 +19,89 @@
 #include "Utility.h"
 #include <stdexcept>
 
-HistoryDescriptor::HistoryDescriptor(int timestamp,int depth_position, const cv::Rect& location):
-	timestamp_(timestamp),
-	depth_position_(depth_position),
-	location_(location) {}
+BlobDescriptor::BlobDescriptor(int id) {
+	id_ = id;
+}
 
-BlobDescriptor::BlobDescriptor(int sequence_number, int id, const ColorPair& colors,const cv::Rect& location,int depth,Contour* contour):
-	filter_(location),
-	history_(1,HistoryDescriptor(sequence_number,depth,location)),
-	id_(id),
-	colors_(colors){
-	//TODO: modify BlobDescriptorFetcher so NULL isn't necessary
-	if(contour!=NULL) {
-		contour_.swap(*contour);
-		moments_ = cv::moments(contour_,false);
-		centroid_ = utility::centroid(moments_);
+void BlobDescriptor::update(int sequence_number, Contour& swapped_contour) {
+
+	//store the contour
+	contours_.push_back(Contour());
+	swapped_contour.swap(*contours_.rbegin());
+
+	//store sequence number
+	sequence_numbers_.push_back(sequence_number);
+
+	//store raw bound
+	raw_bounds_.push_back(cv::boundingRect(*contours_.rbegin()));
+}
+
+void BlobDescriptor::serializeContour(ros::Publisher& pub) {
+	dhs::contourPtr msg(new dhs::contour());
+	msg->id = id_;
+	//for each point in the contour, put it in the blob
+	ContourConstIt cursor = contours_.rbegin()->begin();
+	for(;cursor!=contours_.rbegin()->end();cursor++) {
+		msg->contour.push_back(cursor->x);
+		msg->contour.push_back(cursor->y);
 	}
+	pub.publish(msg);
 }
 
-//Sets upper/lower halves (maybe)
-//updates last_seen
-//updates history (maybe)
-void BlobDescriptor::update(int sequence_number, const cv::Rect& location,int depth,Contour* contour) {
-	filter_.update(&location);
-	history_.push_back(HistoryDescriptor(sequence_number,depth,location));
-	//TODO: modify BlobDescriptorFetcher so NULL check isn't necessary
-	if(contour!=NULL) {
-		contour_.swap(*contour);
-		moments_ = cv::moments(contour_,false);
-		centroid_ = utility::centroid(moments_);
+void BlobDescriptor::deserializeContour(int sequence_number, const dhs::contour::_contour_type& contour) {
+	Contour out;
+	//for each point in the contour, put it in the blob
+	dhs::contour::_contour_type::const_iterator cursor = contour.begin();
+	assert(contour.size()%2==0);
+	for(;cursor!=contour.end();) {
+		cv::Point pt(*(cursor++),*(cursor++));
+		int temp = pt.x;
+		pt.x = pt.y;
+		pt.y=temp;
+		out.push_back(pt);
 	}
-}
 
-cv::Rect BlobDescriptor::LastRawBound() const {
-	return history_.rbegin()->location_;
-}
-cv::Rect BlobDescriptor::CurrentBound() const {
-	return filter_.bound();
-}
-//timestamp of end(history)
-int BlobDescriptor::LastSeen() const {
-	return history_.rbegin()->timestamp_;
-}
-//timestamp of begin(history)
-int BlobDescriptor::FirstSeen() const {
-	return history_.begin()->timestamp_;
-}
-ColorPair BlobDescriptor::Colors() const{
-	return colors_;
+	this->update(sequence_number,out);
 }
 
 int BlobDescriptor::Id() const {
 	return id_;
 }
 
-int BlobDescriptor::getDepth() const {
-	return history_.rbegin()->depth_position_;
+cv::Rect BlobDescriptor::getLastRawBound() const {
+	return *raw_bounds_.rbegin();
 }
 
-cv::Point2f BlobDescriptor::getCentroid() const {
-	return centroid_;
-}
-
-cv::Rect BlobDescriptor::getBound(int index) const {
+cv::Rect BlobDescriptor::getRawBound(int index) const {
 	try {
-		return history_.at(index).location_;
+		return raw_bounds_.at(index);
 	} catch (const std::out_of_range& oor){
 		std::cout<<"requested out of range blob"<<std::endl;
 		assert(false);
 	}
+	//dummy return to make the compiler happy
 	return (cv::Rect());
 }
 
-BlobDescriptorFetcher::BlobDescriptorFetcher(const std::string& topic) {
-	blob_subscriber_ = handle_.subscribe(topic,100,&BlobDescriptorFetcher::receiver,this);
-}
-std::string BlobDescriptorFetcher::getTopic() {
-	return blob_subscriber_.getTopic();
+
+
+int BlobDescriptor::firstSeen() const{
+	assert(sequence_numbers_.size() > 0);
+	return *sequence_numbers_.begin();
 }
 
+int BlobDescriptor::lastSeen() const{
+	assert(sequence_numbers_.size() > 0);
+	return *sequence_numbers_.rbegin();
+}
+
+const Contour& BlobDescriptor::getLastContour() const{
+	return *contours_.rbegin();
+}
+
+
+
+/*
 void BlobDescriptorFetcher::receiver(const dhs::blob& msg) {
 	//deserialize the message into the map
 	//get colors
@@ -134,3 +138,4 @@ void BlobDescriptorFetcher::receiver(const dhs::blob& msg) {
 	//add this id to the blobs_updated array so something else can go do processing on it
 	blobs_updated_.push_back(msg.id);
 }
+*/
