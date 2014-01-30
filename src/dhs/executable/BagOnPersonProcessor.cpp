@@ -23,10 +23,11 @@
 #include <ros/ros.h>
 
 //project includes
-#include "../include/Utility.h"
-#include "../include/ProcessorNode.h"
-#include "../include/EventCodes.h"
-#include "../include/BlobDescriptor.h"
+#include "Utility.h"
+#include "ProcessorNode.h"
+#include "EventCodes.h"
+#include "BlobDescriptor.h"
+#include "Periodic.h"
 
 class BlobDescriptorDecorated : public BlobDescriptor{
 public:
@@ -68,6 +69,7 @@ private:
 	//tools
 	Kalman filter_;
 	cv::Moments moments_;
+	Periodic tracker_;
 };
 typedef boost::shared_ptr<BlobDescriptorDecorated> BlobDescriptorDecPtr;
 
@@ -87,6 +89,7 @@ private:
 	std::map<int,BlobDescriptorDecPtr> blobs_;
 	std::vector<int> blobs_updated_;
 	ImageFetcher rgb_input_stream;
+	cv::Moments moments_;
 };
 
 
@@ -141,14 +144,14 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 
 		//TODO: fix the race condition here in which an empty list which
 		//has a blob added to it after here will break the loop
-		blob_iterator = input_stream_.blobs_updated_.begin();
+		blob_iterator = blobs_updated_.begin();
 
 		//draw the contour on a mat
 		//TODO:get the size another way
 		cv::Mat blob_visual(cv::Size(640,480),CV_8UC1,cv::Scalar(0));
 		{
 			ContourList temp_list;
-			temp_list.push_back(current_blob->contour_);
+			temp_list.push_back(current_blob->getLastContour());
 			cv::drawContours(blob_visual,temp_list,0,cv::Scalar(255),-1);
 		}
 
@@ -187,40 +190,42 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 
 		//check periodicity and reclassify pixels if necessary
 		//algorithm: if there are no similarity measurements for this blob, it must be the first time it's been seen
-		if(!current_blob->set_up_) {
+		if(!current_blob->tracker_.set_up()) {
 			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" added to periodicity tracker");
 			//this is the first time the blob has been seen
-			current_blob->setupPeriodic(blob_visual);
+			cv::Point2f centroid( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
+			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),centroid,blob_visual);
 		} else if(utility::changedMoreThanFactor( //the bound has changed a lot since first view, so reset all the periodicity tracking stuff
-				current_blob->initial_bound_,
-				current_blob->LastRawBound(), 1)) {
+				current_blob->getRawBound(0),
+				current_blob->getLastRawBound(), 1)) {
 			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" changed a lot, resetting its track");
 			//the blob changed a lot so dump everything and start over
 			//this typcially occurs a few times as the blob is entering the scene
-			current_blob->setupPeriodic(blob_visual);
+			cv::Point2f centroid( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
+			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),centroid,blob_visual);
 		} else {
 			//blob has already been seen, just check for periodicity
 			Point2fVec dst_points;
 			dst_points.push_back(current_blob->getCentroid());
-			dst_points.push_back(current_blob->LastRawBound().tl());
-			dst_points.push_back(utility::BottomLeft(current_blob->LastRawBound()));
+			dst_points.push_back(current_blob->getLastRawBound().tl());
+			dst_points.push_back(utility::BottomLeft(current_blob->getLastRawBound()));
 
 			//get an affine transformation matrix which maps the current view to the template view
-			cv::Mat warp_mat = cv::getAffineTransform(dst_points,current_blob->src_points_);
+			cv::Mat warp_mat = cv::getAffineTransform(dst_points,current_blob->tracker_.src_points());
 
 			//warp the visual representation of the non symmetric parts of the blob to the reference frame (ideally the first full view of the blob)
 			cv::Mat warped_blob;
 			cv::warpAffine(blob_visual,warped_blob,warp_mat,blob_visual.size());
 
-			current_blob->addFrame(warped_blob);
+			current_blob->tracker_.addFrame(warped_blob);
 		}
 
 		//draw interesting regions
 		cv::Mat rgb;
 		if(current_blob->filter_.initialized() > 0 && rgb_input_stream.GetMostRecentFrame(rgb)!=0) {
 			std::cout<<"There is an interesting region"<<std::endl;
-			cv::Rect interest_rect(current_blob->LastRawBound().x+current_blob->filter_.bound().x,
-					current_blob->LastRawBound().y+current_blob->filter_.bound().y,
+			cv::Rect interest_rect(current_blob->getLastRawBound().x+current_blob->filter_.bound().x,
+					current_blob->getLastRawBound().y+current_blob->filter_.bound().y,
 					current_blob->filter_.bound().width,
 					current_blob->filter_.bound().height);
 			cv::rectangle(rgb,interest_rect,cv::Scalar(255),1);
