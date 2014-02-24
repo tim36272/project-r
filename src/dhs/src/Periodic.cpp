@@ -25,7 +25,7 @@
 static const int kMinObjectSize(100);
 
 void Periodic::setup(const cv::Rect& bound, const cv::Point2f& centroid, const cv::Mat& template_view) {
-        //store its current location
+        //store the blob's current location
         {
                 initial_bound_ = bound;
                 interest_windows_.clear();
@@ -52,7 +52,7 @@ void Periodic::setup(const cv::Rect& bound, const cv::Point2f& centroid, const c
         cv::Size old_size = cropped.size();
         cv::resize(cropped,cropped,cv::Size(9,15));
         cv::resize(cropped,cropped,old_size);
-        //store its template
+        //store the blob's template
         {
                 template_views_.clear();
                 std::vector<cv::Rect>::iterator it = interest_windows_.begin();
@@ -104,7 +104,7 @@ void Periodic::addFrame(const cv::Mat& frame) {
                 //compute the similarity between the current frame and every other frame
                 for(int template_index=0;template_index<template_views_.size()-1;template_index++) {
                         double similarity_measurement = utility::computeSimilarity(*template_views_.rbegin()->operator [](window_index),
-                                                                                                                                           *template_views_[template_index][window_index]);
+                                                                                   *template_views_[template_index][window_index]);
                         similarities_[window_index].at<float>(template_index,current_frame_-1) = (similarity_measurement);
                         similarities_[window_index].at<float>(current_frame_-1,template_index) = (similarity_measurement);
 
