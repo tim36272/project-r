@@ -42,8 +42,8 @@ typedef BlobPtrVector::const_iterator BlobPtrVectorConstIt;
 class Worker {
 	//this class is only used to provide data to the ros::timer
 public:
-	Worker(const std::string& first_topic, const std::string& second_topic,const std::string& third_topic,const std::string& output_topic) :
-		input_stream_(first_topic,second_topic,third_topic),
+	Worker(const std::string& rgb_segmentation_topic, const std::string& depth_segmentation_topic, const std::string& rgb_topic,const std::string& depth_topic,const std::string& output_topic) :
+		input_stream_(rgb_segmentation_topic,depth_segmentation_topic,rgb_topic,depth_topic),
 		next_id(0),
 		handle_() {
 		output_stream_ = handle_.advertise<dhs::blob>(output_topic,100);
@@ -56,7 +56,7 @@ public:
 	BlobPtrVector blobs_;
 	ContourList contours_;
 
-	cv::Mat segmentation_,rgb_,depth_;
+	cv::Mat rgb_segmentation_,depth_segmentation_,combined_segmentation_,rgb_,depth_;
 
 private:
 	void findBlobs();
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
 	//setLoggerDebug();
 
 	//loop at 60 hz since the camera runs half that fast
-	Worker worker("segmentation_in","rgb_in","depth_in","blobs_out");
+	Worker worker("rgb_segmentation_in","depth_segmentation_in","rgb_in","depth_in","blobs_out");
 	ros::Timer timer = handle.createTimer(ros::Duration(1./120.), &Worker::callback, &worker);
 
 	//can be shut down safely with Ctrl+C
@@ -96,11 +96,14 @@ void Worker::callback(const ros::TimerEvent& event) {
 	//TODO: check if this is running realtime
 
 	//wait until we get a frame
-	int sequence_number = input_stream_.GetFrame(segmentation_,rgb_,depth_);
+	int sequence_number = input_stream_.GetFrame(rgb_segmentation_,depth_segmentation_,rgb_,depth_);
+	cv::waitKey(1);
 	if(sequence_number==FRAME_NOT_UPDATED) {
 		//there's no new frames waiting
 		return;
 	}
+	cv::bitwise_and(rgb_segmentation_, depth_segmentation_,combined_segmentation_);
+	imshow("combined",combined_segmentation_);
 
 	//process the frames
 	//first: get significant blobs
@@ -125,10 +128,10 @@ void Worker::callback(const ros::TimerEvent& event) {
 }
 
 void Worker::findBlobs() {
-	assert(segmentation_.data && rgb_.data);
+	assert(combined_segmentation_.data && rgb_.data);
 
 	//get contours in the frames using cv::findContours
-	cv::findContours(segmentation_.clone(),contours_,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
+	cv::findContours(combined_segmentation_.clone(),contours_,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_NONE);
 
 	//iterate through the list and remove small contours
 	contours_.erase(std::remove_if(contours_.begin(),contours_.end(),isContourSmall),

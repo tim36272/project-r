@@ -28,13 +28,16 @@ class SynchronousImageFetcher {
 	DISALLOW_COPY_AND_ASSIGN(SynchronousImageFetcher);
 	SynchronousImageFetcher(const std::string& first_topic_name,const std::string& second_topic_name);
 	SynchronousImageFetcher(const std::string& first_topic_name,const std::string& second_topic_name,const std::string& third_topic_name);
+	SynchronousImageFetcher(const std::string& first_topic_name,const std::string& second_topic_name,const std::string& third_topic_name,const std::string&  fourth_topic_name);
 
 	int GetFrame(cv::Mat& first_frame,cv::Mat& second_frame);
 	int GetFrame(cv::Mat& first_frame,cv::Mat& second_frame,cv::Mat& third_frame);
+	int GetFrame(cv::Mat& first_frame,cv::Mat& second_frame,cv::Mat& third_frame, cv::Mat& fourth_frame);
 
 	private:
-	ImageFetcher first_handle,second_handle,third_handle;
+	ImageFetcher first_handle,second_handle,third_handle,fourth_handle;
 	const bool third_topic_exists_;
+	const bool fourth_topic_exists_;
 };
 
 #endif /* SYNCHRONOUSIMAGEFETCHER_H_ */

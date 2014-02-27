@@ -99,7 +99,7 @@ private:
 };
 
 /*
- * Decorated BlobDescriptor includes Kalman Filter and Moments
+ * Decorated BlobDescriptor includes Kalman Filter, Moments, and periodic tracker
  */
 class BlobDescriptorDecoratedKMT : public BlobDescriptor{
 public:
@@ -181,3 +181,57 @@ private:
 											msg->filtered_size[1]));
 	}
 };
+
+/*
+ * Decorated BlobDescriptor includes Kalman Filter, bag flag,
+ */
+class BlobDescriptorDecoratedKB : public BlobDescriptor{
+public:
+	typedef BlobDescriptor super;
+	BlobDescriptorDecoratedKB(int id) : super::BlobDescriptor(id) {}
+	~BlobDescriptorDecoratedKB() {}
+
+	void update(int sequence_number, Contour& swapped_contour) {
+		super::update(sequence_number,swapped_contour);
+
+		//calculate filtered bound
+		filter_.update(&*raw_bounds_.rbegin());
+
+		//store filtered bound
+		filtered_bounds_.push_back(filter_.bound());
+	}
+
+	//get an arbitrary filtered bound
+	cv::Rect getFilteredBound(int index) const {
+		try {
+			return filtered_bounds_.at(index);
+		} catch (const std::out_of_range& oor){
+			std::cout<<"requested out of range blob"<<std::endl;
+			assert(false);
+		}
+		//dummy return to make the compiler happy
+		return (cv::Rect());
+	}
+	//get most recent filtered bound
+	cv::Rect getLastFilteredBound() const {
+		return *filtered_bounds_.rbegin();
+	}
+	Kalman filter_;
+private:
+	std::vector<cv::Rect> filtered_bounds_;
+	//tools
+
+	void serialize_decorators(dhs::blobPtr msg) {
+		msg->filtered_position[0] = getLastFilteredBound().x;
+		msg->filtered_position[1] = getLastFilteredBound().y;
+		msg->filtered_size[0] = getLastFilteredBound().width;
+		msg->filtered_size[1] = getLastFilteredBound().height;
+	}
+	void deserialize_decorators(dhs::blobPtr msg) {
+		filtered_bounds_.push_back(cv::Rect(msg->filtered_position[0],
+											msg->filtered_position[1],
+											msg->filtered_size[0],
+											msg->filtered_size[1]));
+	}
+};
+

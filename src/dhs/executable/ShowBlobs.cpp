@@ -27,7 +27,6 @@
 
 typedef BlobDescriptorDecoratedKM BlobType;
 typedef boost::shared_ptr<BlobType> BlobPtr;
-typedef std::vector<BlobPtr> BlobPtrVector;
 
 class Worker {
 	//this class is only used to provide data to the ros::timer
@@ -79,7 +78,7 @@ void Worker::callback(const ros::TimerEvent& event) {
 	//draw all the updated blobs
 	std::vector<int>::const_iterator blob_it = blobs_updated_.begin();
 	while(blob_it !=blobs_updated_.end()) {
-		cv::rectangle(rgb,blobs_[*blob_it]->getLastFilteredBound(),cv::Scalar(255),2);
+		cv::rectangle(rgb,blobs_[*blob_it]->getLastFilteredBound(),cv::Scalar(blobs_[*blob_it]->Id()*50),2);
 		blob_it++;
 	}
 	//note: there is a race condition here. It is possible that a blob could be

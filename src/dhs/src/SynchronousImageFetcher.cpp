@@ -20,17 +20,29 @@ SynchronousImageFetcher::SynchronousImageFetcher(const std::string& first_topic_
 											     const std::string& second_topic_name):
 	first_handle(first_topic_name),
 	second_handle(second_topic_name),
-	third_topic_exists_(false) {}
+	third_topic_exists_(false),
+	fourth_topic_exists_(false){}
 SynchronousImageFetcher::SynchronousImageFetcher(const std::string& first_topic_name,
 												 const std::string& second_topic_name,
 												 const std::string& third_topic_name):
 	first_handle(first_topic_name),
 	second_handle(second_topic_name),
 	third_handle(third_topic_name),
-	third_topic_exists_(true) {}
+	third_topic_exists_(true),
+	fourth_topic_exists_(false){}
+SynchronousImageFetcher::SynchronousImageFetcher(const std::string& first_topic_name,
+												 const std::string& second_topic_name,
+												 const std::string& third_topic_name,
+												 const std::string& fourth_topic_name):
+	first_handle(first_topic_name),
+	second_handle(second_topic_name),
+	third_handle(third_topic_name),
+	fourth_handle(fourth_topic_name),
+	third_topic_exists_(true),
+	fourth_topic_exists_(true){}
 
 int SynchronousImageFetcher::GetFrame(cv::Mat& first_frame,cv::Mat& second_frame) {
-	assert(!third_topic_exists_);
+	assert(!third_topic_exists_ && !fourth_topic_exists_);
 	//check if both depth and rgb handles have updated information to provide
 	//TODO:synchronize these with sequence numbers
 	if(first_handle.IsUpdated() && second_handle.IsUpdated()) {
@@ -45,7 +57,7 @@ int SynchronousImageFetcher::GetFrame(cv::Mat& first_frame,cv::Mat& second_frame
 }
 
 int SynchronousImageFetcher::GetFrame(cv::Mat& first_frame,cv::Mat& second_frame, cv::Mat& third_frame) {
-	assert(third_topic_exists_);
+	assert(third_topic_exists_ && !fourth_topic_exists_);
 	//check if both depth and rgb handles have updated information to provide
 	//TODO:synchronize these with sequence numbers
 	if(first_handle.IsUpdated() && second_handle.IsUpdated() && third_handle.IsUpdated()) {
@@ -56,6 +68,25 @@ int SynchronousImageFetcher::GetFrame(cv::Mat& first_frame,cv::Mat& second_frame
 		assert(second_sequence_number!=FRAME_NOT_UPDATED);
 		int third_sequence_number = third_handle.GetFrame(third_frame);
 		assert(third_sequence_number!=FRAME_NOT_UPDATED);
+		return first_sequence_number;
+	}
+	return FRAME_NOT_UPDATED;
+}
+
+int SynchronousImageFetcher::GetFrame(cv::Mat& first_frame,cv::Mat& second_frame, cv::Mat& third_frame, cv::Mat& fourth_frame) {
+	assert(third_topic_exists_ && fourth_topic_exists_);
+	//check if both depth and rgb handles have updated information to provide
+	//TODO:synchronize these with sequence numbers
+	if(first_handle.IsUpdated() && second_handle.IsUpdated() && third_handle.IsUpdated() && fourth_handle.IsUpdated()) {
+		//get the frames
+		int first_sequence_number = first_handle.GetFrame(first_frame);
+		assert(first_sequence_number!=FRAME_NOT_UPDATED);
+		int second_sequence_number = second_handle.GetFrame(second_frame);
+		assert(second_sequence_number!=FRAME_NOT_UPDATED);
+		int third_sequence_number = third_handle.GetFrame(third_frame);
+		assert(third_sequence_number!=FRAME_NOT_UPDATED);
+		int fourth_sequence_number = fourth_handle.GetFrame(fourth_frame);
+		assert(fourth_sequence_number!=FRAME_NOT_UPDATED);
 		return first_sequence_number;
 	}
 	return FRAME_NOT_UPDATED;
