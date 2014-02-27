@@ -10,7 +10,8 @@
 		<remap from="depth_in" to="/camera/depth_registered/image_raw" />			
 		<remap from="blobs_out" to="/camera/depth_registered/blobs" />
 	</node>
-	<node pkg="dhs" type="show_blobs" name="show_blobs">
+	<node pkg="dhs" type="show_blobs" name="show_blobs" output="screen">
 		<remap from="rgb_in" to="/camera/rgb/image_color"/>
+		<remap from="blobs_in" to="/camera/depth_registered/blobs"/>
 	</node>
 </launch>

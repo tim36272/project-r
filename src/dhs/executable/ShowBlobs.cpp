@@ -16,13 +16,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <ros/ros.h>
-#include "dhs/contour.h"
+
 
 //project includes
 #include "dhs/Utility.h"
 #include "dhs/common.h"
 #include "dhs/BlobDescriptorDecorated.h"
 #include "dhs/ImageFetcher.h"
+#include "dhs/blob.h"
 
 typedef BlobDescriptorDecoratedKM BlobType;
 typedef boost::shared_ptr<BlobType> BlobPtr;
@@ -34,7 +35,7 @@ public:
 	Worker(const std::string& first_topic) :
 		input_stream_(first_topic),
 		next_id(0),
-		handle_("~") {	}
+		handle_() { blobs_in_ = handle_.subscribe("blobs_in",1,&Worker::blobCallback,this);}
 
 	void callback(const ros::TimerEvent& event);
 
@@ -48,11 +49,12 @@ private:
 	void blobCallback(dhs::blobPtr msg);
 	std::map<int,BlobPtr> blobs_;
 	std::vector<int> blobs_updated_;
+	ros::Subscriber blobs_in_;
 
 };
 
 int main(int argc, char* argv[]) {
-	ros::init(argc,argv,"blob_descriptor");
+	ros::init(argc,argv,"show_blobs");
 	ros::NodeHandle handle("~");
 	setLoggerDebug();
 
@@ -69,11 +71,10 @@ int main(int argc, char* argv[]) {
 void Worker::callback(const ros::TimerEvent& event) {
 	//get the image and draw currently visible blobs on it
 	cv::Mat rgb;
-	ROS_DEBUG("Grabbing frame");
 	if(input_stream_.GetFrame(rgb)==FRAME_NOT_UPDATED) {
 		return;
 	}
-	ROS_DEBUG("Grabed frame");
+//	ROS_DEBUG("Grabed frame");
 
 	//draw all the updated blobs
 	std::vector<int>::const_iterator blob_it = blobs_updated_.begin();
@@ -87,6 +88,7 @@ void Worker::callback(const ros::TimerEvent& event) {
 	blobs_updated_.clear();
 
 	cv::imshow("Blobs",rgb);
+	cv::waitKey(1);
 }
 
 void Worker::blobCallback(dhs::blobPtr msg) {

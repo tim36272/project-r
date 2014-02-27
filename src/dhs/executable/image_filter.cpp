@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
 	ros::NodeHandle handle("~");
 
 	Worker worker("in","out");
-	//loop at 60 hz since the camera runs half that fast
+	//loop at 120 hz since the camera runs quarter that fast
 	ros::Timer timer = handle.createTimer(ros::Duration(1./120.), &Worker::callback, &worker);
 
 	ros::spin();
