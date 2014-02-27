@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Kalman.h"
+#include "dhs/Kalman.h"
 Kalman::Kalman() {
 	initialized_ = false;
 }

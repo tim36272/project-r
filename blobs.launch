@@ -8,8 +8,9 @@
 		<remap from="segmentation_in" to="/camera/depth_registered/segmentation" />
 		<remap from="rgb_in" to="/camera/rgb/gaussian_filtered" />
 		<remap from="depth_in" to="/camera/depth_registered/image_raw" />			
-		<remap from="blobs_out" to="/camera/rgb/blobs" />
+		<remap from="blobs_out" to="/camera/depth_registered/blobs" />
 	</node>
-
-
+	<node pkg="dhs" type="show_blobs" name="show_blobs">
+		<remap from="rgb_in" to="/camera/rgb/image_color"/>
+	</node>
 </launch>

@@ -15,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "SynchronousImageFetcher.h"
+#include "dhs/SynchronousImageFetcher.h"
 SynchronousImageFetcher::SynchronousImageFetcher(const std::string& first_topic_name,
 											     const std::string& second_topic_name):
 	first_handle(first_topic_name),

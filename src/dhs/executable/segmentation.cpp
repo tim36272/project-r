@@ -16,8 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "../include/ImageFetcher.h"
-#include "../include/ImageSender.h"
+#include "dhs/ImageFetcher.h"
+#include "dhs/ImageSender.h"
 
 #define NO_THRESHOLDING -1
 

@@ -23,66 +23,21 @@
 #include <ros/ros.h>
 
 //project includes
-#include "Utility.h"
-#include "ImageFetcher.h"
-#include "ProcessorNode.h"
-#include "EventCodes.h"
-#include "BlobDescriptor.h"
-#include "Periodic.h"
+#include "dhs/Utility.h"
+#include "dhs/ImageFetcher.h"
+#include "dhs/ProcessorNode.h"
+#include "dhs/EventCodes.h"
+#include "dhs/BlobDescriptorDecorated.h"
 
-class BlobDescriptorDecorated : public BlobDescriptor{
-public:
-	typedef BlobDescriptor super;
-	BlobDescriptorDecorated(int id) : super::BlobDescriptor(id) {}
-	~BlobDescriptorDecorated() {}
-
-	void update_child() {
-		//calculate filtered bound
-		filter_.update(&*raw_bounds_.rbegin());
-
-		//store filtered bound
-		filtered_bounds_.push_back(filter_.bound());
-
-		//calculate moments
-		moments_ = cv::moments(getLastContour());
-		ROS_DEBUG_STREAM("Calculated moments for id"<<Id()<<", centroid: "<<getCentroid());
-	}
-
-	//get an arbitrary filtered bound
-	cv::Rect getFilteredBound(int index) const {
-		try {
-			return filtered_bounds_.at(index);
-		} catch (const std::out_of_range& oor){
-			std::cout<<"requested out of range blob"<<std::endl;
-			assert(false);
-		}
-		//dummy return to make the compiler happy
-		return (cv::Rect());
-	}
-	//get most recent filtered bound
-	cv::Rect getLastFilteredBound() const {
-		assert(filtered_bounds_.size()>0);
-		return *(filtered_bounds_.rbegin());
-	}
-	//return the mass center
-	cv::Point2f getCentroid() const {
-		return cv::Point2f( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
-	}
-	Periodic tracker_;
-	Kalman filter_;
-	cv::Moments moments_;
-private:
-	std::vector<cv::Rect> filtered_bounds_;
-	//tools
-};
-typedef boost::shared_ptr<BlobDescriptorDecorated> BlobDescriptorDecPtr;
+typedef BlobDescriptorDecoratedKMT BlobType;
+typedef boost::shared_ptr<BlobType> BlobPtr;
 
 class BagOnPersonProcessor : public ProcessorNode {
 public:
 	DISALLOW_DEFAULT_CONSTRUCTION(BagOnPersonProcessor);
 	BagOnPersonProcessor(const std::string& blob_topic,const std::string& event_topic,const std::string& rgb_topic);
 	void callback(const ros::TimerEvent& event);
-	void blobCallback(dhs::contourPtr msg);
+	void blobCallback(dhs::blobPtr msg);
 
 	void init();
 	cv::VideoWriter writer_;
@@ -90,7 +45,7 @@ private:
 	DISALLOW_COPY_AND_ASSIGN(BagOnPersonProcessor);
 	ros::NodeHandle handle_;
 	ros::Subscriber input_stream_;
-	std::map<int,BlobDescriptorDecPtr> blobs_;
+	std::map<int,BlobPtr> blobs_;
 	std::vector<int> blobs_updated_;
 	ImageFetcher rgb_input_stream;
 };
@@ -137,7 +92,7 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 	std::vector<int>::iterator blob_iterator = blobs_updated_.begin();
 	for(;blob_iterator!=blobs_updated_.end();) {
 		//just get this blob as a pointer
-		BlobDescriptorDecPtr current_blob = blobs_[*blob_iterator];
+		BlobPtr current_blob = blobs_[*blob_iterator];
 		/*
 		 * erase this index from the updated list and reset the iterator. This prevents
 		 * jumping past the end of the vector when incrementing the iterator
@@ -246,15 +201,15 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 	cv::waitKey(1);
 }
 
-void BagOnPersonProcessor::blobCallback(dhs::contourPtr msg) {
+void BagOnPersonProcessor::blobCallback(dhs::blobPtr msg) {
 	//find the blob to match this to
 	try {
-		blobs_.at(msg->id)->deserializeContour(msg->header.seq,msg->contour);
+		blobs_.at(msg->id)->deserializeBlob(msg);
 	}
 	catch (std::out_of_range&) {
-		BlobDescriptorDecPtr temp(new BlobDescriptorDecorated(msg->id));
-			temp->deserializeContour((int)msg->header.seq,msg->contour);
-			blobs_.insert(std::pair<int,BlobDescriptorDecPtr>(msg->id,temp));
+		BlobPtr temp(new BlobType(msg->id));
+			temp->deserializeBlob(msg);
+			blobs_.insert(std::pair<int,BlobPtr>(msg->id,temp));
 	}
 	blobs_updated_.push_back(msg->id);
 }

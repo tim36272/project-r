@@ -165,6 +165,9 @@ target_link_libraries(image_filter ${catkin_LIBRARIES})
 add_executable (blob_descriptor executable/blob_descriptor.cpp)
 target_link_libraries(blob_descriptor ${catkin_LIBRARIES})
 
+add_executable (show_blobs executable/ShowBlobs.cpp)
+target_link_libraries(show_blobs ${catkin_LIBRARIES})
+
 #add_executable (interface executable/interface.cpp)
 #target_link_libraries(interface ${catkin_LIBRARIES})
 

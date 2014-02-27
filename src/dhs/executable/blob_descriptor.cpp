@@ -22,64 +22,22 @@
 
 //library includes
 #include <ros/ros.h>
-#include "dhs/contour.h"
+#include "dhs/blob.h"
 
 //project includes
-#include "../include/Utility.h"
-#include "../include/SynchronousImageFetcher.h"
-#include "../include/BlobDescriptor.h"
+#include "dhs/Utility.h"
+#include "dhs/SynchronousImageFetcher.h"
+#include "dhs/BlobDescriptorDecorated.h"
+#include "dhs/common.h"
 
 //constants (experimentally chosen)
 static const int kMinContourArea = 1000;
 
-/*
- * Decorated BlobDescriptor includes Kalman Filter and Moments
- */
-class BlobDescriptorDecorated : public BlobDescriptor{
-public:
-	typedef BlobDescriptor super;
-	BlobDescriptorDecorated(int id) : super::BlobDescriptor(id) {}
-	~BlobDescriptorDecorated() {}
-
-	void update(int sequence_number, Contour& swapped_contour) {
-		super::update(sequence_number,swapped_contour);
-
-		//calculate filtered bound
-		filter_.update(&*raw_bounds_.rbegin());
-
-		//store filtered bound
-		filtered_bounds_.push_back(filter_.bound());
-	}
-
-	//get an arbitrary filtered bound
-	cv::Rect getFilteredBound(int index) const {
-		try {
-			return filtered_bounds_.at(index);
-		} catch (const std::out_of_range& oor){
-			std::cout<<"requested out of range blob"<<std::endl;
-			assert(false);
-		}
-		//dummy return to make the compiler happy
-		return (cv::Rect());
-	}
-	//get most recent filtered bound
-	cv::Rect getLastFilteredBound() const {
-		return *filtered_bounds_.rbegin();
-	}
-	//return the mass center
-	cv::Point2f getCentroid() const {
-		return cv::Point2f( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
-	}
-private:
-	std::vector<cv::Rect> filtered_bounds_;
-	//tools
-	Kalman filter_;
-	cv::Moments moments_;
-};
-typedef boost::shared_ptr<BlobDescriptorDecorated> BlobDescriptorDecPtr;
-typedef std::vector<BlobDescriptorDecPtr> BlobDescriptorDecPtrVector;
-typedef BlobDescriptorDecPtrVector::iterator BlobDescriptorDecPtrVectorIt;
-typedef BlobDescriptorDecPtrVector::const_iterator BlobDescriptorDecPtrVectorConstIt;
+typedef BlobDescriptorDecoratedKM BlobType;
+typedef boost::shared_ptr<BlobType> BlobPtr;
+typedef std::vector<BlobPtr> BlobPtrVector;
+typedef BlobPtrVector::iterator BlobPtrVectorIt;
+typedef BlobPtrVector::const_iterator BlobPtrVectorConstIt;
 
 class Worker {
 	//this class is only used to provide data to the ros::timer
@@ -88,14 +46,14 @@ public:
 		input_stream_(first_topic,second_topic,third_topic),
 		next_id(0),
 		handle_() {
-		output_stream_ = handle_.advertise<dhs::contour>(output_topic,100);
+		output_stream_ = handle_.advertise<dhs::blob>(output_topic,100);
 	}
 
 	void callback(const ros::TimerEvent& event);
 
 	SynchronousImageFetcher input_stream_;
 	ros::Publisher output_stream_;
-	BlobDescriptorDecPtrVector blobs_;
+	BlobPtrVector blobs_;
 	ContourList contours_;
 
 	cv::Mat segmentation_,rgb_,depth_;
@@ -120,7 +78,7 @@ bool isContourSmall(const Contour& rhs) {
 int main(int argc, char* argv[]) {
 	ros::init(argc,argv,"blob_descriptor");
 	ros::NodeHandle handle("~");
-	setLoggerDebug();
+	//setLoggerDebug();
 
 	//loop at 60 hz since the camera runs half that fast
 	Worker worker("segmentation_in","rgb_in","depth_in","blobs_out");
@@ -149,19 +107,19 @@ void Worker::callback(const ros::TimerEvent& event) {
 	ROS_DEBUG("Finding blobs");
 	findBlobs();
 
-//	std::cout<<"updating blobs"<<std::endl;
+	ROS_DEBUG("updating blobs");
 	//second: try to update existing blobs
 	updateBlobs(sequence_number);
 
-//	std::cout<<"adding blobs"<<std::endl;
+	ROS_DEBUG("adding blobs");
 	//third: add remaining blobs as new blobs
 	addBlobs(sequence_number);
 
-//	std::cout<<"culling blobs"<<std::endl;
+	ROS_DEBUG("culling blobs");
 	//fourth: remove blobs that were only seen for one frame
 	cullBlobs(sequence_number);
 
-//	std::cout<<"publishing blobs"<<std::endl;
+	ROS_DEBUG("publishing blobs");
 	//fifth: publish blobs over ros
 	publishBlobs(sequence_number);
 }
@@ -178,7 +136,7 @@ void Worker::findBlobs() {
 }
 void Worker::updateBlobs(int sequence_number) {
 	//for each blob in blobs_ find all the contours in contours_ which are in the same place
-	BlobDescriptorDecPtrVectorIt blob_cursor = blobs_.begin();
+	BlobPtrVectorIt blob_cursor = blobs_.begin();
 
 	//the number of blobs should be small
 	for(;blob_cursor!=blobs_.end();blob_cursor++) {
@@ -227,7 +185,7 @@ void Worker::addBlobs(int sequence_number) {
 		//get depth position of this contour
 		int depth = 0;//depth_.at<uchar>(utility::Center(bound));
 
-		BlobDescriptorDecPtr temp(new BlobDescriptorDecorated(next_id++));
+		BlobPtr temp(new BlobType(next_id++));
 		temp->update(sequence_number,*contour_cursor);
 		assert(temp->Id()==(next_id-1));
 		blobs_.push_back(temp);
@@ -238,8 +196,8 @@ void Worker::cullBlobs(int sequence_number) {
 	if(blobs_.empty()) {
 		return;
 	}
-	BlobDescriptorDecPtrVectorIt cursor = blobs_.begin();
-	BlobDescriptorDecPtrVector new_blobs;
+	BlobPtrVectorIt cursor = blobs_.begin();
+	BlobPtrVector new_blobs;
 	for(;cursor !=blobs_.end();cursor++) {
 		int last_seen = (*cursor)->lastSeen();
 		int first_seen = (*cursor)->firstSeen();
@@ -259,13 +217,13 @@ void Worker::cullBlobs(int sequence_number) {
 
 void Worker::publishBlobs(int sequence_number) {
 	ROS_DEBUG("publishing blobs");
-	BlobDescriptorDecPtrVectorConstIt cursor = blobs_.begin();
+	BlobPtrVectorConstIt cursor = blobs_.begin();
 	for(;cursor!=blobs_.end();cursor++) {
 		//don't publish blobs which were not seen this run
 		if((*cursor)->lastSeen()!=sequence_number) {
 			continue;
 		}
-		(*cursor)->serializeContour(output_stream_);
+		(*cursor)->serializeBlob(output_stream_);
 	}
 }
 

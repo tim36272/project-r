@@ -1,6 +1,6 @@
 /*
- * interface.cpp
-    Copyright (C) 2013  Timothy Sweet
+ * BagInteraction.cpp
+    Copyright (C) 2014  Timothy Sweet
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,18 +15,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include <ros/ros.h>
 
-#include "dhs/ImageFetcher.h"
-#include "dhs/BlobDescriptor.h"
+#include "dhs/BlobDescriptorDecorated.h"
 
-int main(int argc, char* argv[]) {
-	ros::init(argc, argv, "image_filter");
-	ros::NodeHandle handle;
-	//get the blobs
-	ImageFetcher rgb_stream("rgb_in");
-	//subscribe to blob descriptor
-	BlobDescriptorFetcher blob_stream("blob_in");
-	ros::spin();
+typedef BlobDescritorDecoratedKM BlobType;
+int main() {
+
 }

@@ -15,13 +15,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "ImageSender.h"
+#include "dhs/ImageSender.h"
 /*
  * Sets up the ros publisher, the queue size is set to a small number because
  * the transport stream shouldn't get too far behind real time
  */
 ImageSender::ImageSender(const std::string& image_topic_name):transport_(handle_) {
 	image_pub_ = transport_.advertise(image_topic_name,1);
+	sequence_number_ = -1;
 //	if(!image_pub_) {
 		//there was an error, which has already been logged in the ros logger
 		//not really much for this constructor to do about it

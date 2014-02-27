@@ -19,8 +19,8 @@
 #ifndef SYNCHRONOUSIMAGEFETCHER_H_
 #define SYNCHRONOUSIMAGEFETCHER_H_
 #include <string>
-#include "common.h"
-#include "ImageFetcher.h"
+#include "dhs/common.h"
+#include "dhs/ImageFetcher.h"
 
 
 class SynchronousImageFetcher {

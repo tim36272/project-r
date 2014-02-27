@@ -15,11 +15,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "Periodic.h"
+#include "dhs/Periodic.h"
 
 #include <ros/ros.h>
 
-#include "Utility.h"
+#include "dhs/Utility.h"
 
 //static const int kMinContourArea(100);
 static const int kMinObjectSize(100);

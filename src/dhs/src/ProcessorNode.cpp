@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ProcessorNode.h"
+#include "dhs/ProcessorNode.h"
 
 void ProcessorNode::setupOutput() {
 	output_stream_ = handle_.advertise<dhs::event>(output_topic_,100);

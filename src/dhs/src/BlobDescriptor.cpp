@@ -15,8 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "BlobDescriptor.h"
-#include "Utility.h"
+#include "dhs/BlobDescriptor.h"
+#include "dhs/Utility.h"
 #include <stdexcept>
 
 BlobDescriptor::BlobDescriptor(int id) {
@@ -39,8 +39,8 @@ void BlobDescriptor::update(int sequence_number, Contour& swapped_contour) {
 	update_child();
 }
 
-void BlobDescriptor::serializeContour(ros::Publisher& pub) {
-	dhs::contourPtr msg(new dhs::contour());
+void BlobDescriptor::serializeBlob(ros::Publisher& pub) {
+	dhs::blobPtr msg(new dhs::blob());
 	msg->id = id_;
 	//for each point in the contour, put it in the blob
 	ContourConstIt cursor = contours_.rbegin()->begin();
@@ -48,23 +48,35 @@ void BlobDescriptor::serializeContour(ros::Publisher& pub) {
 		msg->contour.push_back(cursor->x);
 		msg->contour.push_back(cursor->y);
 	}
+	msg->raw_position[0] = getLastRawBound().x;
+	msg->raw_position[1] = getLastRawBound().y;
+	msg->raw_size[0] = getLastRawBound().width;
+	msg->raw_size[1] = getLastRawBound().height;
+//	msg->depth = getLastDepth();
+	//serialize any data from a decorated class
+	serialize_decorators(msg);
 	pub.publish(msg);
 }
 
-void BlobDescriptor::deserializeContour(int sequence_number, const dhs::contour::_contour_type& contour) {
+void BlobDescriptor::deserializeBlob(const dhs::blobPtr& blob) {
 	Contour out;
 	//for each point in the contour, put it in the blob
-	dhs::contour::_contour_type::const_iterator cursor = contour.begin();
-	assert(contour.size()%2==0);
-	for(;cursor!=contour.end();) {
+	dhs::blob::_contour_type::const_iterator cursor = blob->contour.begin();
+	assert(blob->contour.size()%2==0);
+	for(;cursor!=blob->contour.end();) {
 		cv::Point pt(*(cursor++),*(cursor++));
 		int temp = pt.x;
 		pt.x = pt.y;
 		pt.y=temp;
 		out.push_back(pt);
 	}
-
-	this->update(sequence_number,out);
+	raw_bounds_.push_back(cv::Rect(blob->raw_position[0],
+								   blob->raw_position[1],
+								   blob->raw_size[0],
+								   blob->raw_size[1]));
+//	depths_.push_back(blob.depth);
+	deserialize_decorators(blob);
+	this->update(blob->header.seq,out);
 }
 
 int BlobDescriptor::Id() const {
@@ -72,6 +84,7 @@ int BlobDescriptor::Id() const {
 }
 
 cv::Rect BlobDescriptor::getLastRawBound() const {
+	assert(!raw_bounds_.empty());
 	return *raw_bounds_.rbegin();
 }
 
@@ -79,7 +92,7 @@ cv::Rect BlobDescriptor::getRawBound(int index) const {
 	try {
 		return raw_bounds_.at(index);
 	} catch (const std::out_of_range& oor){
-		std::cout<<"requested out of range blob"<<std::endl;
+		std::cout<<"requested out of range bound index"<<std::endl;
 		assert(false);
 	}
 	//dummy return to make the compiler happy
@@ -99,5 +112,23 @@ int BlobDescriptor::lastSeen() const{
 }
 
 const Contour& BlobDescriptor::getLastContour() const{
+	assert(!contours_.empty());
 	return *contours_.rbegin();
+}
+
+
+int BlobDescriptor::getLastDepth() const {
+	assert(!depths_.empty());
+	return *depths_.rbegin();
+}
+
+int BlobDescriptor::getDepth(int index) const {
+	try {
+		return depths_.at(index);
+	} catch (const std::out_of_range& oor){
+		std::cout<<"requested out of range depth index"<<std::endl;
+		assert(false);
+	}
+	//dummy return to make the compiler happy
+	return -1;
 }

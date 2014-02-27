@@ -21,9 +21,9 @@
 #include <utility>
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
-#include "common.h"
-#include "dhs/contour.h"
-#include "Kalman.h"
+#include "dhs/common.h"
+#include "dhs/blob.h" //msg
+#include "dhs/Kalman.h"
 
 //describes one connected blob
 class BlobDescriptor {
@@ -38,8 +38,8 @@ public:
 	void update(int sequence_number, Contour& swapped_contour);
 	virtual void update_child() {}
 	//serialize the most recent contour
-	void serializeContour(ros::Publisher& pub);
-	void deserializeContour(int sequence_number, const dhs::contour::_contour_type& contour);
+	void serializeBlob(ros::Publisher& pub);
+	void deserializeBlob(const dhs::blobPtr& contour);
 
 	/*
 	 * Accessors
@@ -56,6 +56,10 @@ public:
 	int lastSeen() const;
 	//get most recent contour
 	const Contour& getLastContour() const;
+	//get most recent depth
+	int getLastDepth() const;
+	//get arbitrary depth
+	int getDepth(int index) const;
 
 
 protected:
@@ -66,6 +70,9 @@ protected:
 	std::vector<int> sequence_numbers_;
 	std::vector<int> depths_;
 	std::vector<cv::Rect> raw_bounds_;
+
+	virtual void serialize_decorators(dhs::blobPtr) {}
+	virtual void deserialize_decorators(dhs::blobPtr) {}
 
 };
 #endif /* BLOBDESCRIPTOR_H_ */
