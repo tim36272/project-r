@@ -142,7 +142,7 @@ target_link_libraries(Images ${catkin_LIBRARIES})
 link_libraries(Images)
 
 
-add_library(Utility src/Utility.cpp src/BlobDescriptor.cpp src/ProcessorNode.cpp src/Periodic.cpp)
+add_library(Utility src/Utility.cpp src/BlobDescriptor.cpp src/ProcessorNode.cpp src/Periodic.cpp src/Interaction.cpp)
 target_link_libraries(Utility ${catkin_LIBRARIES})
 link_libraries(Utility)
 
@@ -165,8 +165,11 @@ target_link_libraries(image_filter ${catkin_LIBRARIES})
 add_executable (blob_descriptor executable/blob_descriptor.cpp)
 target_link_libraries(blob_descriptor ${catkin_LIBRARIES})
 
-add_executable (show_blobs executable/ShowBlobs.cpp)
-target_link_libraries(show_blobs ${catkin_LIBRARIES})
+add_executable (blob_monitor executable/blob_monitor.cpp)
+target_link_libraries(blob_monitor ${catkin_LIBRARIES})
+
+add_executable (bag_interaction executable/bag_interaction.cpp)
+target_link_libraries(bag_interaction ${catkin_LIBRARIES})
 
 #add_executable (interface executable/interface.cpp)
 #target_link_libraries(interface ${catkin_LIBRARIES})

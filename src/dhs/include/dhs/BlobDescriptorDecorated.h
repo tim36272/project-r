@@ -16,6 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef BLOBDESCRIPTORDECORATED_H_
+#define BLOBDESCRIPTORDECORATED_H_
+
 #include "dhs/BlobDescriptor.h"
 #include "dhs/Periodic.h"
 /*
@@ -27,9 +30,7 @@ public:
 	BlobDescriptorDecoratedKM(int id) : super::BlobDescriptor(id) {}
 	~BlobDescriptorDecoratedKM() {}
 
-	void update(int sequence_number, Contour& swapped_contour) {
-		super::update(sequence_number,swapped_contour);
-
+	void update_decorators() {
 		//calculate filtered bound
 		filter_.update(&*raw_bounds_.rbegin());
 
@@ -97,7 +98,7 @@ private:
 											msg->filtered_size[1]));
 	}
 };
-
+typedef boost::shared_ptr<BlobDescriptorDecoratedKM> BlobDescriptorDecoratedKMPtr;
 /*
  * Decorated BlobDescriptor includes Kalman Filter, Moments, and periodic tracker
  */
@@ -107,8 +108,7 @@ public:
 	BlobDescriptorDecoratedKMT(int id) : super::BlobDescriptor(id) {}
 	~BlobDescriptorDecoratedKMT() {}
 
-	void update(int sequence_number, Contour& swapped_contour) {
-		super::update(sequence_number,swapped_contour);
+	void update_decorators() {
 
 		//calculate filtered bound
 		filter_.update(&*raw_bounds_.rbegin());
@@ -181,18 +181,17 @@ private:
 											msg->filtered_size[1]));
 	}
 };
-
+typedef boost::shared_ptr<BlobDescriptorDecoratedKMT> BlobDescriptorDecoratedKMTPtr;
 /*
  * Decorated BlobDescriptor includes Kalman Filter, bag flag,
  */
 class BlobDescriptorDecoratedKB : public BlobDescriptor{
 public:
 	typedef BlobDescriptor super;
-	BlobDescriptorDecoratedKB(int id) : super::BlobDescriptor(id) {}
+	BlobDescriptorDecoratedKB(int id) : super::BlobDescriptor(id),bag_(false) {}
 	~BlobDescriptorDecoratedKB() {}
 
-	void update(int sequence_number, Contour& swapped_contour) {
-		super::update(sequence_number,swapped_contour);
+	void update_decorators() {
 
 		//calculate filtered bound
 		filter_.update(&*raw_bounds_.rbegin());
@@ -216,9 +215,12 @@ public:
 	cv::Rect getLastFilteredBound() const {
 		return *filtered_bounds_.rbegin();
 	}
+	void set_bag() {bag_=true;}
+	bool bag() {return bag_;}
 	Kalman filter_;
 private:
 	std::vector<cv::Rect> filtered_bounds_;
+	bool bag_;
 	//tools
 
 	void serialize_decorators(dhs::blobPtr msg) {
@@ -226,12 +228,16 @@ private:
 		msg->filtered_position[1] = getLastFilteredBound().y;
 		msg->filtered_size[0] = getLastFilteredBound().width;
 		msg->filtered_size[1] = getLastFilteredBound().height;
+		msg->bag = bag_;
 	}
 	void deserialize_decorators(dhs::blobPtr msg) {
 		filtered_bounds_.push_back(cv::Rect(msg->filtered_position[0],
 											msg->filtered_position[1],
 											msg->filtered_size[0],
 											msg->filtered_size[1]));
+		bag_ = msg->bag;
 	}
 };
+typedef boost::shared_ptr<BlobDescriptorDecoratedKB> BlobDescriptorDecoratedKBPtr;
 
+#endif //BLOBDESCRIPTORDECORATED_H_

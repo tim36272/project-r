@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find dhs_launch)/launch/blobs.launch"/>
+  <node pkg="dhs" type="bag_interaction" name="bag_interaction" output="screen">
+    <remap from="blobs_in" to="/camera/depth_registered/blobs"/>
+  </node>
+</launch>

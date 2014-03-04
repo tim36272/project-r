@@ -23,8 +23,23 @@
 #include <boost/shared_ptr.hpp>
 
 #include <opencv2/opencv.hpp>
-
+/*
+ * BlobDescriptor
+ */
 class BlobDescriptor;
+class BlobDescriptorDecoratedKM;
+class BlobDescriptorDecoratedKMT;
+class BlobDescriptorDecoratedKB;
+
+typedef boost::shared_ptr<BlobDescriptor> BlobDescriptorPtr;
+typedef boost::shared_ptr<BlobDescriptorDecoratedKB> BlobDescriptorDecoratedKBPtr;
+typedef boost::shared_ptr<BlobDescriptorDecoratedKM> BlobDescriptorDecoratedKMPtr;
+typedef boost::shared_ptr<BlobDescriptorDecoratedKMT> BlobDescriptorDecoratedKMTPtr;
+/*
+ * Interactions
+ */
+class InteractionState;
+typedef std::vector<InteractionState> Interactions;
 
 typedef std::vector<cv::Point> Contour;
 typedef Contour::iterator ContourIt;
@@ -35,11 +50,6 @@ typedef ContourList::iterator ContourListIt;
 typedef ContourList::const_iterator ContourListConstIt;
 
 typedef std::pair<cv::Scalar,cv::Scalar> ColorPair;
-
-typedef boost::shared_ptr<BlobDescriptor> BlobDescriptorPtr;
-typedef std::vector<BlobDescriptorPtr> BlobDescriptorPtrVector;
-typedef BlobDescriptorPtrVector::iterator BlobDescriptorPtrVectorIt;
-typedef BlobDescriptorPtrVector::const_iterator BlobDescriptorPtrVectorConstIt;
 
 typedef std::vector<cv::Point2f> Point2fVec;
 

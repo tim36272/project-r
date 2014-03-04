@@ -35,8 +35,8 @@ public:
 	/*
 	 * input_image is a color image with black in background areas
 	 */
-	void update(int sequence_number, Contour& swapped_contour);
-	virtual void update_child() {}
+	void update(int sequence_number, Contour& swapped_contour,int depth);
+	virtual void update_decorators() {}
 	//serialize the most recent contour
 	void serializeBlob(ros::Publisher& pub);
 	void deserializeBlob(const dhs::blobPtr& contour);
@@ -75,4 +75,10 @@ protected:
 	virtual void deserialize_decorators(dhs::blobPtr) {}
 
 };
+
+typedef boost::shared_ptr<BlobDescriptor> BlobDescriptorPtr;
+typedef std::vector<BlobDescriptorPtr> BlobDescriptorPtrVector;
+typedef BlobDescriptorPtrVector::iterator BlobDescriptorPtrVectorIt;
+typedef BlobDescriptorPtrVector::const_iterator BlobDescriptorPtrVectorConstIt;
+
 #endif /* BLOBDESCRIPTOR_H_ */

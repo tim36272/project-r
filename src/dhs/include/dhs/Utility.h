@@ -14,6 +14,11 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    This file contains functions which are likely to generalizable. In other
+    words, these functions perform unit operations and are expected to provide
+    a very certain functionality or answer a specific question with no other
+    input needed.
  */
 
 #ifndef UTILITY_H_
@@ -35,6 +40,7 @@ void CombineContours(const cv::Size& mat_size,ContourList* contours);
 cv::Rect UpperHalf(const cv::Rect& bound);
 cv::Rect LowerHalf(const cv::Rect& bound);
 cv::Point Center(const cv::Rect& bound);
+int distance(cv::Point first, cv::Point second);
 cv::Point BottomLeft(const cv::Rect& bound);
 cv::Scalar At(const cv::Mat frame, const cv::Point location);
 //contours is not const because upon returning, it+candidates == input contours
@@ -59,7 +65,25 @@ double computeSimilarity(const cv::Mat& current_view , const cv::Mat& template_v
 cv::Mat getPowerSpectrum(const cv::Mat& data);
 cv::Mat getMeanPowerSpectrum(const cv::Mat& similarities,int current_frame, int num_spectrums);
 boost::shared_ptr<std::vector<int> > findSignificantPeaks(const cv::Mat& data);
+bool isBagSized(const BlobDescriptorPtr& blob);
+/*
+ * Templated functions
+ * Defintion has to be here to compile it
+ */
+template <typename key,typename T>
+std::vector<T> mapToVectorExcludeOne(std::map<key,T> the_map, typename std::map<key,T>::iterator excluded_key) {
+	if(the_map.size()==0) return std::vector<T>();
 
+	std::vector<T> out;
+	typename std::map<int,T>::const_iterator map_it = the_map.begin();
+	while(map_it != the_map.end()) {
+		if(map_it != excluded_key) {
+			out.push_back(map_it->second);
+		}
+		++map_it;
+	}
+	return out;
+}
 
 /*
  * Numeric utilities

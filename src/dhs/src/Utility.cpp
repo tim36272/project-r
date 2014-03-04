@@ -24,6 +24,8 @@
 
 #include <ros/ros.h>
 
+#include "dhs/BlobDescriptor.h"
+
 static const int kMaxCombineTimes(10);
 static const int NO_MEDIAN(-1);
 static const int kSymmetryTolerance(5); //TODO: make this set dynamically
@@ -115,6 +117,9 @@ cv::Rect LowerHalf(const cv::Rect& bound) {
 cv::Point Center(const cv::Rect& bound) {
 	assert(bound.width > 0 && bound.height > 0 && bound.x >= 0 && bound.y >= 0);
 	return cv::Point(bound.x+bound.width/2,bound.y+bound.height/2);
+}
+int distance(cv::Point first, cv::Point second) {
+	return sqrt( (first.x-second.x)*(first.x-second.x) + (first.y-second.y)*(first.y-second.y) );
 }
 cv::Point BottomLeft(const cv::Rect& bound) {
 	assert(bound.width > 0 && bound.height > 0);
@@ -501,4 +506,11 @@ boost::shared_ptr<std::vector<int> > findSignificantPeaks(const cv::Mat& data) {
 	}
 	return significant_peaks;
 }
+bool isBagSized(const BlobDescriptorPtr& blob) {
+	//(temporary) hack: if the blob satisfies
+	//(height)/(200-depth) < 3.0
+	//it is a bag
+	return blob->getLastRawBound().height/(200-blob->getLastDepth()) < 3;
 }
+
+} // namespace utility

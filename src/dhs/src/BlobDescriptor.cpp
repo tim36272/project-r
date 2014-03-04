@@ -23,7 +23,7 @@ BlobDescriptor::BlobDescriptor(int id) {
 	id_ = id;
 }
 
-void BlobDescriptor::update(int sequence_number, Contour& swapped_contour) {
+void BlobDescriptor::update(int sequence_number, Contour& swapped_contour,int depth) {
 
 	//store the contour
 	contours_.push_back(Contour());
@@ -35,8 +35,10 @@ void BlobDescriptor::update(int sequence_number, Contour& swapped_contour) {
 	//store raw bound
 	raw_bounds_.push_back(cv::boundingRect(*contours_.rbegin()));
 
+	//store depth
+	depths_.push_back(depth);
 	//call child updater
-	update_child();
+	update_decorators();
 }
 
 void BlobDescriptor::serializeBlob(ros::Publisher& pub) {
@@ -52,31 +54,33 @@ void BlobDescriptor::serializeBlob(ros::Publisher& pub) {
 	msg->raw_position[1] = getLastRawBound().y;
 	msg->raw_size[0] = getLastRawBound().width;
 	msg->raw_size[1] = getLastRawBound().height;
-//	msg->depth = getLastDepth();
+	msg->depth = getLastDepth();
+	msg->last_seen = lastSeen();
+	msg->first_seen = firstSeen();
 	//serialize any data from a decorated class
 	serialize_decorators(msg);
 	pub.publish(msg);
 }
 
-void BlobDescriptor::deserializeBlob(const dhs::blobPtr& blob) {
+void BlobDescriptor::deserializeBlob(const dhs::blobPtr& msg) {
 	Contour out;
 	//for each point in the contour, put it in the blob
-	dhs::blob::_contour_type::const_iterator cursor = blob->contour.begin();
-	assert(blob->contour.size()%2==0);
-	for(;cursor!=blob->contour.end();) {
+	dhs::blob::_contour_type::const_iterator cursor = msg->contour.begin();
+	assert(msg->contour.size()%2==0);
+	for(;cursor!=msg->contour.end();) {
 		cv::Point pt(*(cursor++),*(cursor++));
 		int temp = pt.x;
 		pt.x = pt.y;
 		pt.y=temp;
 		out.push_back(pt);
 	}
-	raw_bounds_.push_back(cv::Rect(blob->raw_position[0],
-								   blob->raw_position[1],
-								   blob->raw_size[0],
-								   blob->raw_size[1]));
-//	depths_.push_back(blob.depth);
-	deserialize_decorators(blob);
-	this->update(blob->header.seq,out);
+	raw_bounds_.push_back(cv::Rect(msg->raw_position[0],
+								   msg->raw_position[1],
+								   msg->raw_size[0],
+								   msg->raw_size[1]));
+	depths_.push_back(msg->depth);
+	deserialize_decorators(msg);
+	this->update(msg->last_seen,out,msg->depth);
 }
 
 int BlobDescriptor::Id() const {

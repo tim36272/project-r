@@ -97,13 +97,11 @@ void Worker::callback(const ros::TimerEvent& event) {
 
 	//wait until we get a frame
 	int sequence_number = input_stream_.GetFrame(rgb_segmentation_,depth_segmentation_,rgb_,depth_);
-	cv::waitKey(1);
 	if(sequence_number==FRAME_NOT_UPDATED) {
 		//there's no new frames waiting
 		return;
 	}
 	cv::bitwise_and(rgb_segmentation_, depth_segmentation_,combined_segmentation_);
-	imshow("combined",combined_segmentation_);
 
 	//process the frames
 	//first: get significant blobs
@@ -161,9 +159,14 @@ void Worker::updateBlobs(int sequence_number) {
 		//find the largest candidate
 		ContourListIt max_at = utility::findLargestContour(candidates);
 
+		cv::Rect bound = cv::boundingRect(*max_at);
+
+		//get depth position of this contour
+		int depth = depth_.at<uchar>(utility::Center(bound));
+
 		//update the blob with the largest contour
 		//TODO: check if the blob is the right color
-		(*blob_cursor)->update(sequence_number,*max_at);
+		(*blob_cursor)->update(sequence_number,*max_at,depth);
 
 		candidates.erase(max_at);
 
@@ -186,10 +189,10 @@ void Worker::addBlobs(int sequence_number) {
 		colors.second = utility::At(rgb_,utility::Center(utility::LowerHalf(bound)));
 
 		//get depth position of this contour
-		int depth = 0;//depth_.at<uchar>(utility::Center(bound));
+		int depth = depth_.at<uchar>(utility::Center(bound));
 
 		BlobPtr temp(new BlobType(next_id++));
-		temp->update(sequence_number,*contour_cursor);
+		temp->update(sequence_number,*contour_cursor,depth);
 		assert(temp->Id()==(next_id-1));
 		blobs_.push_back(temp);
 	}

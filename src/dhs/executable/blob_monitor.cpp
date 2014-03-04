@@ -78,7 +78,22 @@ void Worker::callback(const ros::TimerEvent& event) {
 	//draw all the updated blobs
 	std::vector<int>::const_iterator blob_it = blobs_updated_.begin();
 	while(blob_it !=blobs_updated_.end()) {
-		cv::rectangle(rgb,blobs_[*blob_it]->getLastFilteredBound(),cv::Scalar(blobs_[*blob_it]->Id()*50),2);
+		cv::Scalar blob_color(blobs_[*blob_it]->Id()*50);
+		cv::rectangle(rgb,blobs_[*blob_it]->getLastFilteredBound(),blob_color,2);
+		//put description
+		std::stringstream description;
+		description<<"("<<blobs_[*blob_it]->getLastFilteredBound().width
+				   <<","<<blobs_[*blob_it]->getLastFilteredBound().height
+				   <<") depth: "<<blobs_[*blob_it]->getLastDepth();
+		cv::Point text_at = blobs_[*blob_it]->getLastFilteredBound().tl()-cv::Point(20,0);
+		cv::putText(rgb, 						//mat to draw on
+					description.str(),			//the text
+				    text_at,
+				    cv::FONT_HERSHEY_SIMPLEX,	//font face
+				    0.5,							//font scale
+				    blob_color,			//color
+					1);							//thickness
+
 		blob_it++;
 	}
 	//note: there is a race condition here. It is possible that a blob could be
