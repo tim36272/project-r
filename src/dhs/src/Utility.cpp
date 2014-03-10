@@ -117,7 +117,6 @@ cv::Rect LowerHalf(const cv::Rect& bound) {
 	return cv::Rect(bound.x+bound.height/2,bound.y,bound.width,bound.height/2);
 }
 cv::Point Center(const cv::Rect& bound) {
-	assert(bound.width > 0 && bound.height > 0 && bound.x >= 0 && bound.y >= 0);
 	return cv::Point(bound.x+bound.width/2,bound.y+bound.height/2);
 }
 int distance(cv::Point first, cv::Point second) {

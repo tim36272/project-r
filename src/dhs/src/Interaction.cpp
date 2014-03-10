@@ -112,7 +112,8 @@ bool checkForTwoPeopleMeeting(const BlobDescriptorDecoratedKBPtr first_blob, con
 	//TODO: add depth checking
 	//check if they are close to eachother
 	int separation =  utility::separation(first_blob->getLastFilteredBound(),second_blob->getLastFilteredBound());
-	int max_separation = utility::Center(first_blob->getLastFilteredBound()).x + utility::Center(second_blob->getLastFilteredBound()).x;
+	//max_separation is the sum of the bounds' widths
+	int max_separation = first_blob->getLastFilteredBound().x/4 + second_blob->getLastFilteredBound().x/4;
 
 	if(separation < max_separation) {
 		interaction->set_agent_1_id(first_blob->Id());
@@ -127,7 +128,7 @@ bool checkForTwoPeopleMeeting(const BlobDescriptorDecoratedKBPtr first_blob, con
 bool checkForBagAbandoned(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDecoratedKBPtr bag, InteractionStatePtr interaction) {
 	//check if they are close to each other
 	int separation =  utility::separation(bag->getLastFilteredBound(),owner->getLastFilteredBound());
-	int max_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(owner->getLastFilteredBound()).x;
+	int max_separation = bag->getLastFilteredBound().x + owner->getLastFilteredBound().x;
 
 	if(separation > max_separation) {
 		interaction->set_agent_1_id(owner->Id());
@@ -147,11 +148,11 @@ bool checkForBagExchange(BlobDescriptorDecoratedKBPtr owner, const BlobDescripto
 
 	//check if they are bag and owner are close
 	int bag_owner_separation =  utility::separation(bag->getLastFilteredBound(),owner->getLastFilteredBound());
-	int max_bag_owner_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(owner->getLastFilteredBound()).x;
+	int max_bag_owner_separation = bag->getLastFilteredBound().x + owner->getLastFilteredBound().x;
 
 	//check if they are bag and receiver are close
 	int bag_receiver_separation =  utility::separation(bag->getLastFilteredBound(),receiver->getLastFilteredBound());
-	int max_bag_receiver_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(receiver->getLastFilteredBound()).x;
+	int max_bag_receiver_separation = bag->getLastFilteredBound().x + receiver->getLastFilteredBound().x;
 
 	if( (bag_owner_separation < max_bag_owner_separation) && (bag_receiver_separation < max_bag_receiver_separation)) {
 		interaction->set_agent_1_id(owner->Id());
@@ -172,11 +173,11 @@ bool checkForBagSteal(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDe
 
 	//check if they are bag and owner are close
 	int bag_owner_separation =  utility::separation(bag->getLastFilteredBound(),owner->getLastFilteredBound());
-	int max_bag_owner_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(owner->getLastFilteredBound()).x;
+	int max_bag_owner_separation = bag->getLastFilteredBound().x + owner->getLastFilteredBound().x;
 
 	//check if they are bag and receiver are close
 	int bag_receiver_separation =  utility::separation(bag->getLastFilteredBound(),receiver->getLastFilteredBound());
-	int max_bag_receiver_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(receiver->getLastFilteredBound()).x;
+	int max_bag_receiver_separation = bag->getLastFilteredBound().x + receiver->getLastFilteredBound().x;
 
 	if( (bag_owner_separation >
 	max_bag_owner_separation) && (bag_receiver_separation < max_bag_receiver_separation)) {
