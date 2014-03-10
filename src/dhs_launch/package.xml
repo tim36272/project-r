@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
   <name>dhs_launch</name>
-  <version>0.0.0</version>
-  <description>The dhs_launch package</description>
+  <version>1.5.0</version>
+  <description>Launch files for the dhs package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
