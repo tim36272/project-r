@@ -19,7 +19,7 @@
 #include "dhs/Interaction.h"
 
 namespace interaction {
-void checkForInteractions(BlobDescriptorDecoratedKBPtr first_blob, const std::vector<BlobPtr>& other_blobs, Interactions& interactions) {
+void checkForInteractions(const BlobPtr& first_blob, const std::vector<BlobPtr>& other_blobs, Interactions& interactions) {
 	if(!first_blob->bag()) {
 		/*
 		 * Single Person

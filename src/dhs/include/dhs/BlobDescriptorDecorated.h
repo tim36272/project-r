@@ -99,96 +99,14 @@ private:
 	}
 };
 typedef boost::shared_ptr<BlobDescriptorDecoratedKM> BlobDescriptorDecoratedKMPtr;
+
 /*
- * Decorated BlobDescriptor includes Kalman Filter, Moments, and periodic tracker
- */
-class BlobDescriptorDecoratedKMT : public BlobDescriptor{
-public:
-	typedef BlobDescriptor super;
-	BlobDescriptorDecoratedKMT(int id) : super::BlobDescriptor(id) {}
-	~BlobDescriptorDecoratedKMT() {}
-
-	void update_decorators() {
-
-		//calculate filtered bound
-		filter_.update(&*raw_bounds_.rbegin());
-
-		//store filtered bound
-		filtered_bounds_.push_back(filter_.bound());
-	}
-
-	//get an arbitrary filtered bound
-	cv::Rect getFilteredBound(int index) const {
-		try {
-			return filtered_bounds_.at(index);
-		} catch (const std::out_of_range& oor){
-			std::cout<<"requested out of range blob"<<std::endl;
-			assert(false);
-		}
-		//dummy return to make the compiler happy
-		return (cv::Rect());
-	}
-	//get most recent filtered bound
-	cv::Rect getLastFilteredBound() const {
-		return *filtered_bounds_.rbegin();
-	}
-	//return the mass center
-	cv::Point2f getCentroid() const {
-		return cv::Point2f( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
-	}
-	Kalman filter_;
-	cv::Moments moments_;
-	Periodic tracker_;
-private:
-	std::vector<cv::Rect> filtered_bounds_;
-	//tools
-
-
-
-
-	void serialize_decorators(dhs::blobPtr msg) {
-		msg->moments[0] = moments_.m00;
-		msg->moments[1] = moments_.m01;
-		msg->moments[2] = moments_.m02;
-		msg->moments[3] = moments_.m03;
-		msg->moments[4] = moments_.m10;
-		msg->moments[5] = moments_.m11;
-		msg->moments[6] = moments_.m12;
-		msg->moments[7] = moments_.m20;
-		msg->moments[8] = moments_.m21;
-		msg->moments[9] = moments_.m30;
-
-		msg->filtered_position[0] = getLastFilteredBound().x;
-		msg->filtered_position[1] = getLastFilteredBound().y;
-		msg->filtered_size[0] = getLastFilteredBound().width;
-		msg->filtered_size[1] = getLastFilteredBound().height;
-	}
-	void deserialize_decorators(dhs::blobPtr msg) {
-		moments_.m00 = msg->moments[0];
-		moments_.m01 = msg->moments[1];
-		moments_.m02 = msg->moments[2];
-		moments_.m03 = msg->moments[3];
-		moments_.m10 = msg->moments[4];
-		moments_.m11 = msg->moments[5];
-		moments_.m12 = msg->moments[6];
-		moments_.m20 = msg->moments[7];
-		moments_.m21 = msg->moments[8];
-		moments_.m30 = msg->moments[9];
-
-		filtered_bounds_.push_back(cv::Rect(msg->filtered_position[0],
-											msg->filtered_position[1],
-											msg->filtered_size[0],
-											msg->filtered_size[1]));
-	}
-};
-typedef boost::shared_ptr<BlobDescriptorDecoratedKMT> BlobDescriptorDecoratedKMTPtr;
-/*
- * Decorated BlobDescriptor includes Kalman Filter, bag flag,
+ * Decorated BlobDescriptor includes Kalman Filter, bag flags,
  */
 class BlobDescriptorDecoratedKB : public BlobDescriptor{
 public:
 	typedef BlobDescriptor super;
-	BlobDescriptorDecoratedKB(int id) : super::BlobDescriptor(id),bag_(false) {}
+	BlobDescriptorDecoratedKB(int id) : super::BlobDescriptor(id),bag_(false),owner_(-1),with_owner_(false) {}
 	~BlobDescriptorDecoratedKB() {}
 
 	void update_decorators() {
@@ -221,7 +139,7 @@ public:
 	void set_owner(int owner) {owner_ = owner;}
 	int owner() { return owner_; }
 	Kalman filter_;
-private:
+protected:
 	std::vector<cv::Rect> filtered_bounds_;
 	bool bag_,owner_,with_owner_;
 	//tools
@@ -244,5 +162,72 @@ private:
 	}
 };
 typedef boost::shared_ptr<BlobDescriptorDecoratedKB> BlobDescriptorDecoratedKBPtr;
+
+/*
+ * Decorated BlobDescriptor includes Kalman Filter, Moments, and periodic tracker
+ */
+class BlobDescriptorDecoratedKBMT : public BlobDescriptorDecoratedKB{
+public:
+	typedef BlobDescriptorDecoratedKB super;
+	BlobDescriptorDecoratedKBMT(int id) : super::BlobDescriptorDecoratedKB(id) {}
+	~BlobDescriptorDecoratedKBMT() {}
+
+	void update_decorators() {
+		super::update_decorators();
+		//get moments
+		moments_ = cv::moments(getLastContour());
+	}
+
+	//return the mass center
+	cv::Point2f getCentroid() const {
+		return cv::Point2f( moments_.m10/moments_.m00 , moments_.m01/moments_.m00 );
+	}
+	//erases history prior to a certain time.
+	//usually this means a higher-level system detected a prior tracking error
+	void eraseHistory() {
+		int last_good_index = sequence_numbers_.size()-1;
+		contours_.erase(contours_.begin(),contours_.begin()+last_good_index);
+		depths_.erase(depths_.begin(),depths_.begin()+last_good_index);
+		filtered_bounds_.erase(filtered_bounds_.begin(),filtered_bounds_.begin()+last_good_index);
+		raw_bounds_.erase(raw_bounds_.begin(),raw_bounds_.begin()+last_good_index);
+		sequence_numbers_.erase(sequence_numbers_.begin(),sequence_numbers_.begin()+last_good_index);
+	}
+	Kalman filter_;
+	cv::Moments moments_;
+	Periodic tracker_;
+private:
+	std::vector<cv::Rect> filtered_bounds_;
+	//tools
+
+	void serialize_decorators(dhs::blobPtr msg) {
+		msg->moments[0] = moments_.m00;
+		msg->moments[1] = moments_.m01;
+		msg->moments[2] = moments_.m02;
+		msg->moments[3] = moments_.m03;
+		msg->moments[4] = moments_.m10;
+		msg->moments[5] = moments_.m11;
+		msg->moments[6] = moments_.m12;
+		msg->moments[7] = moments_.m20;
+		msg->moments[8] = moments_.m21;
+		msg->moments[9] = moments_.m30;
+
+		super::serialize_decorators(msg);
+	}
+	void deserialize_decorators(dhs::blobPtr msg) {
+		moments_.m00 = msg->moments[0];
+		moments_.m01 = msg->moments[1];
+		moments_.m02 = msg->moments[2];
+		moments_.m03 = msg->moments[3];
+		moments_.m10 = msg->moments[4];
+		moments_.m11 = msg->moments[5];
+		moments_.m12 = msg->moments[6];
+		moments_.m20 = msg->moments[7];
+		moments_.m21 = msg->moments[8];
+		moments_.m30 = msg->moments[9];
+
+		super::deserialize_decorators(msg);
+	}
+};
+typedef boost::shared_ptr<BlobDescriptorDecoratedKBMT> BlobDescriptorDecoratedKBMTPtr;
 
 #endif //BLOBDESCRIPTORDECORATED_H_

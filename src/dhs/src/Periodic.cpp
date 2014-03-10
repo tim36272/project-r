@@ -16,10 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "dhs/Periodic.h"
-
 #include <ros/ros.h>
-
 #include "dhs/Utility.h"
+#include "dhs/BlobDescriptorDecorated.h"
 
 //static const int kMinContourArea(100);
 static const int kMinObjectSize(100);
@@ -30,13 +29,13 @@ void Periodic::setup(const cv::Rect& bound, const cv::Point2f& centroid, const c
                 initial_bound_ = bound;
                 interest_windows_.clear();
                 cv::Rect backpack_region(0,
-                                                                 initial_bound_.height*0.1,
-                                                                 initial_bound_.width,
-                                                                 initial_bound_.height*0.4);
+                                         0,
+                                         initial_bound_.width,
+                                         initial_bound_.height*0.5);
                 cv::Rect briefcase_region(0,
-                                                                 initial_bound_.height*0.5,
-                                                                 initial_bound_.width,
-                                                                 initial_bound_.height*0.5);
+                                          initial_bound_.height*0.5,
+                                          initial_bound_.width,
+                                          initial_bound_.height*0.5);
                 interest_windows_.push_back(backpack_region);
                 interest_windows_.push_back(briefcase_region);
         }
@@ -140,10 +139,10 @@ void Periodic::addFrame(const cv::Mat& frame) {
                                         filter_.update(&bound);
                                         std::cout<<"object size: "<<max_contour_size<<std::endl;
                                 }
-                                std::cout<<"adding an interesting object"<<std::endl;
+                                ROS_DEBUG_STREAM("this frame has an interesting object, bound is: "<<bound);
                         }
                         else {
-                                std::cout<<"small object size: "<<max_contour_size<<std::endl;
+                                ROS_DEBUG_STREAM("small object size: "<<max_contour_size);
                         }
 
                 }
@@ -162,4 +161,116 @@ void Periodic::addFrame(const cv::Mat& frame) {
 //                imshow(title.str(),temp);
         }
         current_frame_++;
+}
+
+namespace periodic {
+void update(const cv::Mat& rgb, std::map<int,BlobPtr>& blobs_, std::vector<int>& blobs_updated_) {
+	//for each blob which was updated this frame
+	if(blobs_updated_.size()==0) {
+		return;
+	}
+	cv::Mat rgb_out = rgb.clone();
+	//TODO: get the size another way
+	cv::Mat output(cv::Size(640,480),CV_8UC1,cv::Scalar(0));
+	std::vector<int>::iterator blob_iterator = blobs_updated_.begin();
+	for(;blob_iterator!=blobs_updated_.end();) {
+		//just get this blob as a pointer
+		BlobPtr current_blob = blobs_.at(*blob_iterator);
+		/*
+		 * erase this index from the updated list and reset the iterator. This prevents
+		 * jumping past the end of the vector when incrementing the iterator
+		 */
+		blobs_updated_.erase(blob_iterator);
+
+		//TODO: fix the race condition here in which an empty list which
+		//has a blob added to it after here will break the loop
+		blob_iterator = blobs_updated_.begin();
+
+		//draw the contour on a mat
+		//TODO:get the size another way
+		cv::Mat blob_visual(cv::Size(640,480),CV_8UC1,cv::Scalar(0));
+		{
+			ContourList temp_list;
+			temp_list.push_back(current_blob->getLastContour());
+			cv::drawContours(blob_visual,temp_list,0,cv::Scalar(255),-1);
+		}
+
+		//compute the body axis
+		//try computing it as the horizontal projection(as in sum of vertical stacks of pixels)
+		utility::floodConcaveRegions(&blob_visual);
+		int symmetry_axis;
+		{
+			std::vector<int> upward_projection;
+			utility::getUpwardProjection(blob_visual,&upward_projection);
+			int max=0;
+			int max_projection_at=0;
+			for(int i=0;i<upward_projection.size();i++) {
+				if(upward_projection[i] > max) {
+					max = upward_projection[i];
+					max_projection_at=i;
+				}
+			}
+			//draw max horizontal projection axis
+			//cv::line(blob_visual,cv::Point(max_at,0),cv::Point(max_at,480),cv::Scalar(128+64),2);
+			symmetry_axis = max_projection_at;
+		}
+
+
+		cv::Mat full_blob(blob_visual.clone());
+
+		//classify each pixel as symmetric or asymmetric
+		utility::removeSymmetricRegions(symmetry_axis,&blob_visual);
+		utility::recolorNonSymmetricRegions(symmetry_axis,&full_blob); //this is only for the user's visualization
+
+		//show the symmetry line just for the user's entertainment
+		cv::line(full_blob,cv::Point(symmetry_axis,0),cv::Point(symmetry_axis,480),cv::Scalar(200),2);
+
+		//show which regions are symmetric/asymmetric
+		cv::imshow("symetric/aysmetric",full_blob);
+
+		//check periodicity and reclassify pixels if necessary
+		//algorithm: if there are no similarity measurements for this blob, it must be the first time it's been seen
+		if(!current_blob->tracker_.set_up()) {
+			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" added to periodicity tracker");
+			//this is the first time the blob has been seen
+			cv::Point2f centroid( current_blob->moments_.m10/current_blob->moments_.m00 , current_blob->moments_.m01/current_blob->moments_.m00 );
+			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),centroid,blob_visual);
+		} else if(utility::changedMoreThanFactor( //the bound has changed a lot since first view, so reset all the periodicity tracking stuff
+				current_blob->getRawBound(0),
+				current_blob->getLastRawBound(), 1)) {
+			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" changed a lot, resetting its track");
+			//the blob changed a lot so dump everything and start over
+			//this typcially occurs a few times as the blob is entering the scene
+			ROS_DEBUG_STREAM("Resetting the tracker for id: "<<current_blob->Id()<<", centroid is: "<<current_blob->getCentroid()<<"Last filtered bound is: "<<current_blob->getLastFilteredBound());
+			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),current_blob->getCentroid(),blob_visual);
+			current_blob->eraseHistory();
+		} else {
+			//blob has already been seen, just check for periodicity
+			Point2fVec dst_points;
+			dst_points.push_back(current_blob->getCentroid());
+			dst_points.push_back(current_blob->getLastRawBound().tl());
+			dst_points.push_back(utility::BottomLeft(current_blob->getLastRawBound()));
+
+			//get an affine transformation matrix which maps the current view to the template view
+			cv::Mat warp_mat = cv::getAffineTransform(dst_points,current_blob->tracker_.src_points());
+
+			//warp the visual representation of the non symmetric parts of the blob to the reference frame (ideally the first full view of the blob)
+			cv::Mat warped_blob;
+			cv::warpAffine(blob_visual,warped_blob,warp_mat,blob_visual.size());
+
+			current_blob->tracker_.addFrame(warped_blob);
+		}
+
+		//draw interesting regions
+		if(current_blob->tracker_.get_filter_initialized()) {
+			cv::Rect interest_rect(current_blob->getLastRawBound().x+current_blob->tracker_.getBound().x,
+					current_blob->getLastRawBound().y+current_blob->tracker_.getBound().y,
+					current_blob->tracker_.getBound().width,
+					current_blob->tracker_.getBound().height);
+			cv::rectangle(rgb_out,interest_rect,cv::Scalar(255),1);
+		}
+	}
+	imshow("interesting regions",rgb_out);
+	cv::waitKey(1);
+}
 }

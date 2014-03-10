@@ -27,7 +27,7 @@
 #include "dhs/BlobDescriptorDecorated.h"
 
 namespace interaction {
-typedef BlobDescriptorDecoratedKBPtr BlobPtr;
+typedef BlobDescriptorDecoratedKBMTPtr BlobPtr;
 static const int kNotSet(-1);
 struct InteractionState {
 	enum InteractionType {
@@ -60,9 +60,6 @@ struct InteractionState {
 		}
 		return;
 	}
-
-
-
 	int getHash() {
 		int hash_factor=1, hash_multiplier=10;
 		int hash=0;
@@ -75,7 +72,6 @@ struct InteractionState {
 		hash += interaction_ * hash_factor;
 		hash_factor *= hash_multiplier;
 		return hash;
-
 	}
 };
 
@@ -83,7 +79,7 @@ typedef boost::shared_ptr<InteractionState> InteractionStatePtr;
 typedef std::map<int,InteractionStatePtr> Interactions;
 
 //calls each of the checkFor's which causes interactions to be populated
-void checkForInteractions(const BlobDescriptorDecoratedKBPtr first_blob, const std::vector<BlobPtr>& other_blobs, Interactions& interactions);
+void checkForInteractions(const BlobPtr& first_blob, const std::vector<BlobPtr>& other_blobs, Interactions& interactions);
 //populates interaction if that type is detected
 bool checkForSinglePerson(const BlobDescriptorDecoratedKBPtr blob, InteractionStatePtr interaction);
 //returns true if the given blobs are meeting

@@ -26,8 +26,8 @@
 #include "dhs/blob.h"
 #include "dhs/Interaction.h"
 
-typedef BlobDescriptorDecoratedKB BlobType;
-typedef BlobDescriptorDecoratedKBPtr BlobPtr;
+typedef BlobDescriptorDecoratedKBMT BlobType;
+typedef boost::shared_ptr<BlobType> BlobPtr;
 typedef std::map<int,BlobPtr> BlobPtrMap;
 typedef BlobPtrMap::iterator BlobPtrMapIt;
 
@@ -36,7 +36,8 @@ class Worker {
 public:
 	Worker(const std::string& blob_topic) :
 		next_id(0),
-		handle_() { blobs_in_ = handle_.subscribe(blob_topic,1,&Worker::blobCallback,this);}
+		handle_(),
+		rgb_in_stream_("/camera/rgb/image_color"){ blobs_in_ = handle_.subscribe(blob_topic,1,&Worker::blobCallback,this);}
 
 	void callback(const ros::TimerEvent& event);
 
@@ -50,6 +51,8 @@ private:
 	std::vector<int> blobs_updated_;
 	ros::Subscriber blobs_in_;
 	interaction::Interactions interactions_;
+	//temporarily grab the rgb stream here, eventually the output will be directed to UI
+	ImageFetcher rgb_in_stream_;
 
 };
 
@@ -69,7 +72,8 @@ int main(int argc, char* argv[]) {
 }
 
 void Worker::callback(const ros::TimerEvent& event) {
-	if(blobs_.empty()) {
+	//note: blobs_updated_ needs to be consumed by something, in this case the periodicity tracker
+	if(blobs_.empty() || blobs_updated_.empty()) {
 		return;
 	}
 //	ROS_DEBUG_STREAM("There are "<<blobs_.size()<<" blobs");
@@ -83,6 +87,11 @@ void Worker::callback(const ros::TimerEvent& event) {
 		++blob_it;
 	}
 	interaction::print(interactions_);
+
+	//backpack module
+	cv::Mat rgb(cv::Size(640,480),CV_8UC3,cv::Scalar::all(0));
+	rgb_in_stream_.GetMostRecentFrame(rgb);
+	periodic::update(rgb,blobs_,blobs_updated_);
 }
 
 void Worker::blobCallback(dhs::blobPtr msg) {

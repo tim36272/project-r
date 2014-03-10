@@ -87,6 +87,7 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 	if(blobs_updated_.size()==0) {
 		return;
 	}
+	ROS_DEBUG("Analyzing updated blob");
 	//TODO: get the size another way
 	cv::Mat output(cv::Size(640,480),CV_8UC1,cv::Scalar(0));
 	std::vector<int>::iterator blob_iterator = blobs_updated_.begin();
@@ -139,7 +140,7 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 		utility::removeSymmetricRegions(symmetry_axis,&blob_visual);
 		utility::recolorNonSymmetricRegions(symmetry_axis,&full_blob); //this is only for the user's visualization
 
-		//show the symmetry line just for the user's edification
+		//show the symmetry line just for the user's entertainment
 		cv::line(full_blob,cv::Point(symmetry_axis,0),cv::Point(symmetry_axis,480),cv::Scalar(200),2);
 
 		//show which regions are symmetric/asymmetric
@@ -158,9 +159,9 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" changed a lot, resetting its track");
 			//the blob changed a lot so dump everything and start over
 			//this typcially occurs a few times as the blob is entering the scene
-			cv::Point2f centroid( current_blob->moments_.m10/current_blob->moments_.m00 , current_blob->moments_.m01/current_blob->moments_.m00 );
-			ROS_DEBUG_STREAM("Resetting the tracker for id: "<<current_blob->Id()<<", centroid is: "<<centroid);
-			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),centroid,blob_visual);
+			ROS_DEBUG_STREAM("Resetting the tracker for id: "<<current_blob->Id()<<", centroid is: "<<current_blob->getCentroid()<<"Last filtered bound is: "<<current_blob->getLastFilteredBound());
+			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),current_blob->getCentroid(),blob_visual);
+			current_blob->eraseHistory();
 		} else {
 			//blob has already been seen, just check for periodicity
 			Point2fVec dst_points;
@@ -183,10 +184,10 @@ void BagOnPersonProcessor::callback(const ros::TimerEvent& event) {
 		cv::Mat rgb;
 		if(current_blob->filter_.initialized() > 0 && rgb_input_stream.GetMostRecentFrame(rgb)!=0) {
 			std::cout<<"There is an interesting region"<<std::endl;
-			cv::Rect interest_rect(current_blob->getLastRawBound().x+current_blob->filter_.bound().x,
-					current_blob->getLastRawBound().y+current_blob->filter_.bound().y,
-					current_blob->filter_.bound().width,
-					current_blob->filter_.bound().height);
+			cv::Rect interest_rect(current_blob->getLastRawBound().x+current_blob->tracker_.getBound().x,
+					current_blob->getLastRawBound().y+current_blob->tracker_.getBound().y,
+					current_blob->tracker_.getBound().width,
+					current_blob->tracker_.getBound().height);
 			cv::rectangle(rgb,interest_rect,cv::Scalar(255),1);
 			imshow("interesting region",rgb);
 			writer_.write(rgb);

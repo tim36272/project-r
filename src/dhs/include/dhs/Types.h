@@ -28,13 +28,14 @@
  */
 class BlobDescriptor;
 class BlobDescriptorDecoratedKM;
-class BlobDescriptorDecoratedKMT;
+class BlobDescriptorDecoratedKBMT;
 class BlobDescriptorDecoratedKB;
 
 typedef boost::shared_ptr<BlobDescriptor> BlobDescriptorPtr;
 typedef boost::shared_ptr<BlobDescriptorDecoratedKB> BlobDescriptorDecoratedKBPtr;
 typedef boost::shared_ptr<BlobDescriptorDecoratedKM> BlobDescriptorDecoratedKMPtr;
-typedef boost::shared_ptr<BlobDescriptorDecoratedKMT> BlobDescriptorDecoratedKMTPtr;
+typedef boost::shared_ptr<BlobDescriptorDecoratedKBMT> BlobDescriptorDecoratedKBMTPtr;
+
 /*
  * Interactions
  */

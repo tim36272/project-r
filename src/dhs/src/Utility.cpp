@@ -513,11 +513,11 @@ bool isBagSized(const BlobDescriptorPtr& blob) {
 	//it is a bag
 	return blob->getLastRawBound().height/(200-blob->getLastDepth()) < 3;
 }
-void assignBagOwner(const std::map<int,BlobDescriptorDecoratedKBPtr>& blobs, BlobDescriptorDecoratedKBPtr bag) {
+void assignBagOwner(const std::map<int,BlobDescriptorDecoratedKBMTPtr>& blobs, BlobDescriptorDecoratedKBMTPtr bag) {
 	//find the closest blob which is not this blob
 	int index_of_closest_blob = -1;
 	int distance_to_closest_blob = INT_MAX;
-	for(std::map<int,BlobDescriptorDecoratedKBPtr>::const_iterator blob_it = blobs.begin();
+	for(std::map<int,BlobDescriptorDecoratedKBMTPtr>::const_iterator blob_it = blobs.begin();
 		blob_it != blobs.end();
 		++blob_it) {
 

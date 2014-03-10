@@ -22,12 +22,15 @@
 #include "opencv2/opencv.hpp"
 #include "Kalman.h"
 
+
 class Periodic {
 public:
 	void setup(const cv::Rect& bound, const cv::Point2f& centroid, const cv::Mat& template_view);
 	void addFrame(const cv::Mat& frame);
 	inline bool set_up() const {return set_up_;}
+	inline bool get_filter_initialized() {return filter_.initialized();}
 	inline std::vector<cv::Point2f> src_points() const{return src_points_;}
+	inline cv::Rect getBound() {return filter_.bound();}
 private:
 	cv::Rect initial_bound_;
 	std::vector<cv::Rect> interest_windows_;
@@ -39,4 +42,13 @@ private:
 	int current_frame_;
 	Kalman filter_; //not sure if this is being used properly, don't think it will work for multiple regions
 };
+
+//forward decleration
+class BlobDescriptorDecoratedKBMT;
+
+namespace periodic {
+typedef BlobDescriptorDecoratedKBMT BlobType;
+typedef boost::shared_ptr<BlobType> BlobPtr;
+void update(const cv::Mat& rgb, std::map<int,BlobPtr>& blobs_, std::vector<int>& blobs_updated_);
+}
 #endif /* PERIODIC_H_ */

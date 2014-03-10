@@ -66,7 +66,7 @@ cv::Mat getPowerSpectrum(const cv::Mat& data);
 cv::Mat getMeanPowerSpectrum(const cv::Mat& similarities,int current_frame, int num_spectrums);
 boost::shared_ptr<std::vector<int> > findSignificantPeaks(const cv::Mat& data);
 bool isBagSized(const BlobDescriptorPtr& blob);
-void assignBagOwner(const std::map<int,BlobDescriptorDecoratedKBPtr>& blobs, BlobDescriptorDecoratedKBPtr bag);
+void assignBagOwner(const std::map<int,BlobDescriptorDecoratedKBMTPtr>& blobs, BlobDescriptorDecoratedKBMTPtr bag);
 double separation(const cv::Rect& first_bound, const cv::Rect& second_bound);
 /*
  * Templated functions
