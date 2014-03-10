@@ -19,23 +19,20 @@
 #include "dhs/Interaction.h"
 
 namespace interaction {
-void checkForInteractions(const BlobDescriptorDecoratedKBPtr first_blob, const std::vector<BlobPtr>& other_blobs, Interactions& interactions) {
-	//person checkers
+void checkForInteractions(BlobDescriptorDecoratedKBPtr first_blob, const std::vector<BlobPtr>& other_blobs, Interactions& interactions) {
 	if(!first_blob->bag()) {
 		/*
 		 * Single Person
 		 */
-		{
-			InteractionStatePtr single_person(new InteractionState);
-			if(checkForSinglePerson(first_blob,single_person)) {
-				//This will either insert, or not if it already exists
-				std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(single_person->getHash(),single_person));
-				if(!inserted.second)
-					inserted.first->second->add_seen_at(first_blob->lastSeen());
-			}
+		InteractionStatePtr single_person(new InteractionState);
+		if(checkForSinglePerson(first_blob,single_person)) {
+			//This will either insert, or not if it already exists
+			std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(single_person->getHash(),single_person));
+			if(!inserted.second)
+				inserted.first->second->add_seen_at(first_blob->lastSeen());
 		}
 		/*
-		 * Two person events need a second blob
+		 * Two blob events need a second blob
 		 */
 		std::vector<BlobPtr>::const_iterator second_blob_it = other_blobs.begin();
 		while(second_blob_it!=other_blobs.end()) {
@@ -44,38 +41,49 @@ void checkForInteractions(const BlobDescriptorDecoratedKBPtr first_blob, const s
 				continue;
 			}
 			/*
+			 * Bag interaction
+			 */
+			InteractionStatePtr bag_abandoned(new InteractionState);
+			if(checkForBagAbandoned(first_blob,*second_blob_it,bag_abandoned)) {
+				//This will either insert, or not if it already exists
+				std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(bag_abandoned->getHash(),bag_abandoned));
+				if(!inserted.second)
+					inserted.first->second->add_seen_at(first_blob->lastSeen());
+			}
+			/*
 			 * Two Person meeting
 			 */
-			{
-				InteractionStatePtr two_person_meeting(new InteractionState);
-				if(checkForTwoPeopleMeeting(first_blob,*second_blob_it,two_person_meeting)) {
-					//This will either insert, or not if it already exists
-					std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(two_person_meeting->getHash(),two_person_meeting));
-					if(!inserted.second)
-						inserted.first->second->add_seen_at(first_blob->lastSeen());
-				}
+			InteractionStatePtr two_person_meeting(new InteractionState);
+			if(checkForTwoPeopleMeeting(first_blob,*second_blob_it,two_person_meeting)) {
+				//This will either insert, or not if it already exists
+				std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(two_person_meeting->getHash(),two_person_meeting));
+				if(!inserted.second)
+					inserted.first->second->add_seen_at(first_blob->lastSeen());
 			}
 			++second_blob_it;
 		}
 	}
-	else { //is a bag
+	else { //it's a bag
 
 	}
 }
 
 bool checkForSinglePerson(const BlobDescriptorDecoratedKBPtr blob, interaction::InteractionStatePtr interaction) {
-		interaction->set_agent_1_id(blob->Id());
-		interaction->set_agent_2_id(interaction::kNotSet);
-		interaction->set_bag_id(interaction::kNotSet);
-		interaction->add_seen_at(blob->lastSeen());
-		interaction->set_interaction(InteractionState::single_person);
-		//this event is always relevant
-		return true;
+	if(blob->bag()) return false;
+
+	interaction->set_agent_1_id(blob->Id());
+	interaction->set_agent_2_id(interaction::kNotSet);
+	interaction->set_bag_id(interaction::kNotSet);
+	interaction->add_seen_at(blob->lastSeen());
+	interaction->set_interaction(InteractionState::single_person);
+	//this event is always relevant
+	return true;
 }
 
 bool checkForTwoPeopleMeeting(const BlobDescriptorDecoratedKBPtr first_blob, const BlobDescriptorDecoratedKBPtr second_blob, InteractionStatePtr interaction) {
 	//must both be visible at the same time
 	if(first_blob->lastSeen() != second_blob->lastSeen()) return false;
+	if(first_blob->bag() || second_blob->bag()) return false;
 
 	//TODO: add depth checking
 	//check if they are close to eachother
@@ -93,6 +101,9 @@ bool checkForTwoPeopleMeeting(const BlobDescriptorDecoratedKBPtr first_blob, con
 		return true;
 	}
 	return false;
+}
+bool checkForBagAbandoned(BlobDescriptorDecoratedKBPtr first_blob, const BlobDescriptorDecoratedKBPtr second_blob, InteractionStatePtr interaction) {
+	if()
 }
 
 void print(Interactions interactions) {

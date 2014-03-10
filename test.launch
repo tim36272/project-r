@@ -1,0 +1,11 @@
+<launch>
+        <node pkg="dhs" type="image_filter" name="depth_registered_filter" output="screen">
+                <remap from="in" to="/camera/depth/image_raw" />
+                <remap from="out" to="/camera/depth_registered/gaussian_filtered" />
+                <param name="threshold" type="int" value="200" />
+        </node>
+
+        <node pkg="image_view" type="image_view" name="depth_registered_view">
+                <remap from="image" to="/camera/depth_registered/gaussian_filtered" />
+        </node>
+</launch>

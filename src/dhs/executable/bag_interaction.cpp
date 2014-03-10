@@ -96,6 +96,7 @@ void Worker::blobCallback(dhs::blobPtr msg) {
 		BlobPtr temp(new BlobType(msg->id));
 			temp->deserializeBlob(msg);
 			if(utility::isBagSized(temp)) {
+				utility::assignBagOwner(blobs_,temp);
 				temp->set_bag();
 			}
 			blobs_.insert(std::pair<int,BlobPtr>(msg->id,temp));

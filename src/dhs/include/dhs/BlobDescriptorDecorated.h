@@ -217,10 +217,12 @@ public:
 	}
 	void set_bag() {bag_=true;}
 	bool bag() {return bag_;}
+	void set_owner(int owner) {owner_ = owner;}
+	int owner() { return owner_; }
 	Kalman filter_;
 private:
 	std::vector<cv::Rect> filtered_bounds_;
-	bool bag_;
+	bool bag_,owner_,with_owner_;
 	//tools
 
 	void serialize_decorators(dhs::blobPtr msg) {
@@ -229,6 +231,7 @@ private:
 		msg->filtered_size[0] = getLastFilteredBound().width;
 		msg->filtered_size[1] = getLastFilteredBound().height;
 		msg->bag = bag_;
+		msg->with_owner = with_owner_;
 	}
 	void deserialize_decorators(dhs::blobPtr msg) {
 		filtered_bounds_.push_back(cv::Rect(msg->filtered_position[0],
@@ -236,6 +239,7 @@ private:
 											msg->filtered_size[0],
 											msg->filtered_size[1]));
 		bag_ = msg->bag;
+		with_owner_ = msg->with_owner;
 	}
 };
 typedef boost::shared_ptr<BlobDescriptorDecoratedKB> BlobDescriptorDecoratedKBPtr;

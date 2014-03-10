@@ -87,6 +87,7 @@ void checkForInteractions(const BlobDescriptorDecoratedKBPtr first_blob, const s
 //populates interaction if that type is detected
 bool checkForSinglePerson(const BlobDescriptorDecoratedKBPtr blob, InteractionStatePtr interaction);
 bool checkForTwoPeopleMeeting(const BlobDescriptorDecoratedKBPtr first_blob, const BlobDescriptorDecoratedKBPtr second_blob, InteractionStatePtr interaction);
+bool checkForBagAbandoned(BlobDescriptorDecoratedKBPtr first_blob, const BlobDescriptorDecoratedKBPtr second_blob, InteractionStatePtr interaction);
 
 void print(Interactions interactions);
 

@@ -33,5 +33,8 @@ int32[] contour
 #the current depth position
 uint8 depth
 
-#if the bag is blob
+#if the blob is bag
 bool bag
+
+#if the bag is with its owner
+bool with_owner

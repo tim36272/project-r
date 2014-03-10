@@ -21,6 +21,7 @@
 #include <string>
 #include <sstream>
 #include <numeric>
+#include <limits>
 
 #include <ros/ros.h>
 
@@ -511,6 +512,28 @@ bool isBagSized(const BlobDescriptorPtr& blob) {
 	//(height)/(200-depth) < 3.0
 	//it is a bag
 	return blob->getLastRawBound().height/(200-blob->getLastDepth()) < 3;
+}
+void utility::assignBagOwner(const std::map<int,BlobDescriptorPtr>& blobs, BlobDescriptorDecoratedKBPtr bag) {
+	//find the closest blob which is not this blob
+	int index_of_closest_blob = -1;
+	int distance_to_closest_blob = INT_MAX;
+	for(std::map<int,BlobDescriptorPtr>::const_iterator blob_it = blobs.begin();
+		blob_it != blobs.end();
+		++blob_it) {
+
+		if(blob_it->second->Id() == bag->Id()) continue;
+		int distance_between_blobs = utility::distance(utility::Center(blob_it->second->getLastRawBound()),utility::Center(bag->getLastRawBound()));
+		if(distance_between_blobs < distance_to_closest_blob) {
+			index_of_closest_blob = blob_it->first;
+		}
+	}
+	if(index_of_closest_blob!=-1) {
+		//the owner is not visible, assign the bag owner to itself
+		bag->set_owner(index_of_closest_blob);
+	}
+	else {
+		bag->set_owner(bag->Id());
+	}
 }
 
 } // namespace utility
