@@ -84,7 +84,7 @@ void Worker::callback(const ros::TimerEvent& event) {
 		std::stringstream description;
 		description<<"("<<blobs_[*blob_it]->getLastFilteredBound().width
 				   <<","<<blobs_[*blob_it]->getLastFilteredBound().height
-				   <<") depth: "<<blobs_[*blob_it]->getLastDepth();
+				   <<") id: "<<blobs_[*blob_it]->Id();
 		cv::Point text_at = blobs_[*blob_it]->getLastFilteredBound().tl()-cv::Point(20,0);
 		cv::putText(rgb, 						//mat to draw on
 					description.str(),			//the text
@@ -99,7 +99,7 @@ void Worker::callback(const ros::TimerEvent& event) {
 	//note: there is a race condition here. It is possible that a blob could be
 	//updated between when we last checked and now. This is acceptable for this
 	//use case.
-	blobs_updated_.clear();
+	//blobs_updated_.clear();
 
 	cv::imshow("Blobs",rgb);
 	cv::waitKey(1);

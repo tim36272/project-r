@@ -20,6 +20,7 @@
 #include "dhs/ImageSender.h"
 
 #define NO_THRESHOLDING -1
+#define DEFAULT_KERNEL 15
 
 class Worker {
 public:
@@ -29,8 +30,11 @@ public:
 		output_stream_(output_topic) {
 		if(!handle_.getParam("threshold", threshold_))
 			threshold_ = NO_THRESHOLDING;
-		std::cout<<"threshold is: "<<threshold_<<std::endl;
-
+		int kernel;
+		if(!handle_.getParam("gaussian_kernel", kernel))
+			kernel = DEFAULT_KERNEL;
+		kernel_.height = kernel;
+		kernel_.width = kernel;
 	}
 
 	void callback(const ros::TimerEvent& event);
@@ -39,6 +43,7 @@ private:
 	ImageFetcher input_stream_;
 	ImageSender output_stream_;
 	int threshold_;
+	cv::Size kernel_;
 };
 
 int main(int argc, char* argv[]) {
@@ -68,7 +73,7 @@ void Worker::callback(const ros::TimerEvent& event) {
 				//threshold values higher than threshold to 0
 				cv::threshold(frame,frame,threshold_,0,cv::THRESH_TOZERO_INV);
 			}
-			cv::GaussianBlur(frame,frame,cv::Size(15,15),0);
+			cv::GaussianBlur(frame,frame,kernel_,0);
 			output_stream_.SendFrame(sequence_number,frame);
 		}
 	}

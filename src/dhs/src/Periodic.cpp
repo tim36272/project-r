@@ -23,7 +23,14 @@
 //static const int kMinContourArea(100);
 static const int kMinObjectSize(100);
 
-void Periodic::setup(const cv::Rect& bound, const cv::Point2f& centroid, const cv::Mat& template_view) {
+void Periodic::setup(cv::Rect bound, const cv::Point2f& centroid, const cv::Mat& template_view) {
+	if(bound.x < 0) bound.x = 0;
+	if(bound.y < 0) bound.y = 0;
+	if(bound.width < 0) bound.width = 0;
+	if(bound.height < 0) bound.height = 0;
+	if(bound.x+bound.width > template_view.cols) bound.width = template_view.cols-bound.x-1;
+	if(bound.y+bound.height > template_view.rows) bound.height = template_view.rows-bound.y-1;
+
         //store the blob's current location
         {
                 initial_bound_ = bound;
@@ -57,9 +64,9 @@ void Periodic::setup(const cv::Rect& bound, const cv::Point2f& centroid, const c
                 std::vector<cv::Rect>::iterator it = interest_windows_.begin();
                 std::vector<MatPtr> temp_list;
                 while(it!=interest_windows_.end()) {
-                        MatPtr temp_mat(new cv::Mat(cropped,*it));
-                        temp_list.push_back(temp_mat);
-                        it++;
+                    MatPtr temp_mat(new cv::Mat(cropped,*it));
+                    temp_list.push_back(temp_mat);
+                    it++;
                 }
                 template_views_.push_back(temp_list);
         }
@@ -231,14 +238,12 @@ void update(const cv::Mat& rgb, std::map<int,BlobPtr>& blobs_, std::vector<int>&
 		//check periodicity and reclassify pixels if necessary
 		//algorithm: if there are no similarity measurements for this blob, it must be the first time it's been seen
 		if(!current_blob->tracker_.set_up()) {
-			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" added to periodicity tracker");
 			//this is the first time the blob has been seen
 			cv::Point2f centroid( current_blob->moments_.m10/current_blob->moments_.m00 , current_blob->moments_.m01/current_blob->moments_.m00 );
 			current_blob->tracker_.setup(current_blob->getLastFilteredBound(),centroid,blob_visual);
 		} else if(utility::changedMoreThanFactor( //the bound has changed a lot since first view, so reset all the periodicity tracking stuff
 				current_blob->getRawBound(0),
 				current_blob->getLastRawBound(), 1)) {
-			ROS_INFO_STREAM("Blob #"<<current_blob->Id()<<" changed a lot, resetting its track");
 			//the blob changed a lot so dump everything and start over
 			//this typcially occurs a few times as the blob is entering the scene
 			ROS_DEBUG_STREAM("Resetting the tracker for id: "<<current_blob->Id()<<", centroid is: "<<current_blob->getCentroid()<<"Last filtered bound is: "<<current_blob->getLastFilteredBound());

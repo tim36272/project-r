@@ -32,7 +32,7 @@ public:
 		if(!handle_.getParam("/segmentation/dilate_times", dilate_times_))
 				dilate_times_ = 0;
 		if(!handle_.getParam("/segmentation/erode_times", erode_times_))
-				erode_times_ = 0;
+				erode_times_ = 5;
 		if(!handle_.getParam("/segmentation/threshold", threshold_))
 			threshold_ = NO_THRESHOLDING;
 		if(!handle_.getParam("/segmentation/detect_shadows", detect_shadows_))

@@ -191,16 +191,16 @@ bool checkForBagSteal(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDe
 	return false;
 }
 
-void print(Interactions interactions) {
+void print(const Interactions& interactions) {
 	std::cout<<"Blob history: ";
-	interaction::Interactions::iterator interaction_it = interactions.begin();
+	interaction::Interactions::const_iterator interaction_it = interactions.begin();
 	while(interaction_it != interactions.end()) {
 		std::cout<<"Blobs: "
 				 <<interaction_it->second->agent_1_id_<<","
 				 <<interaction_it->second->agent_2_id_
 				 <<" are having interaction type "
 				 <<interaction_it->second->interaction_<<": ";
-		std::vector<std::pair<int,int> >::iterator event_it = interaction_it->second->instances_.begin();
+		std::vector<std::pair<int,int> >::const_iterator event_it = interaction_it->second->instances_.begin();
 		while(event_it!=interaction_it->second->instances_.end()) {
 			std::cout<<"("<<event_it->first<<","<<event_it->second<<")";
 			++event_it;
@@ -209,6 +209,33 @@ void print(Interactions interactions) {
 		++interaction_it;
 	}
 	std::cout<<std::endl;
+}
+
+void cull(Interactions& interactions) {
+	int last_event=0;
+	interaction::Interactions::const_iterator interaction_it = interactions.begin();
+	while(interaction_it != interactions.end()) {
+		std::vector<std::pair<int,int> >::const_iterator event_it = interaction_it->second->instances_.begin();
+		while(event_it!=interaction_it->second->instances_.end()) {
+			if(event_it->second > last_event) last_event = event_it->second;
+			event_it++;
+		}
+		++interaction_it;
+	}
+
+	while(interaction_it != interactions.end()) {
+		std::vector<std::pair<int,int> >::iterator event_it = interaction_it->second->instances_.begin();
+		while(event_it!=interaction_it->second->instances_.end()) {
+			if( (event_it->second - event_it->first < 10) && (event_it->second < last_event-10) ) {
+				std::vector<std::pair<int,int> >::iterator to_be_erased = event_it;
+				event_it++;
+				interaction_it->second->instances_.erase(to_be_erased);
+			} else {
+				event_it++;
+			}
+		}
+		++interaction_it;
+	}
 }
 
 }; // namespace interaction

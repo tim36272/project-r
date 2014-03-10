@@ -86,6 +86,7 @@ void Worker::callback(const ros::TimerEvent& event) {
 		interaction::checkForInteractions(blob_it->second, other_blobs,interactions_);
 		++blob_it;
 	}
+	interaction::cull(interactions_);
 	interaction::print(interactions_);
 
 	//backpack module

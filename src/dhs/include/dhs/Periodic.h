@@ -25,7 +25,7 @@
 
 class Periodic {
 public:
-	void setup(const cv::Rect& bound, const cv::Point2f& centroid, const cv::Mat& template_view);
+	void setup(cv::Rect bound, const cv::Point2f& centroid, const cv::Mat& template_view);
 	void addFrame(const cv::Mat& frame);
 	inline bool set_up() const {return set_up_;}
 	inline bool get_filter_initialized() {return filter_.initialized();}

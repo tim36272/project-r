@@ -31,7 +31,7 @@
 #include "dhs/common.h"
 
 //constants (experimentally chosen)
-static const int kMinContourArea = 1000;
+static const int kMinContourArea = 1500;
 
 typedef BlobDescriptorDecoratedKM BlobType;
 typedef boost::shared_ptr<BlobType> BlobPtr;
@@ -78,7 +78,7 @@ bool isContourSmall(const Contour& rhs) {
 int main(int argc, char* argv[]) {
 	ros::init(argc,argv,"blob_descriptor");
 	ros::NodeHandle handle("~");
-	//setLoggerDebug();
+	setLoggerDebug();
 
 	//loop at 60 hz since the camera runs half that fast
 	Worker worker("rgb_segmentation_in","depth_segmentation_in","rgb_in","depth_in","blobs_out");
@@ -102,6 +102,8 @@ void Worker::callback(const ros::TimerEvent& event) {
 		return;
 	}
 	cv::bitwise_and(rgb_segmentation_, depth_segmentation_,combined_segmentation_);
+	cv::imshow("combined",combined_segmentation_);
+	cv::waitKey(1);
 
 	//process the frames
 	//first: get significant blobs
@@ -148,6 +150,7 @@ void Worker::updateBlobs(int sequence_number) {
 		//close to the blob or no contours at all (blob disappeared)
 		if(candidates.empty()) {
 			//there are no candidates, blob disappeared, so stop trying to update
+			ROS_DEBUG_STREAM("There is no candidate for "<<(*blob_cursor)->Id());
 			continue;
 		}
 
@@ -173,8 +176,6 @@ void Worker::updateBlobs(int sequence_number) {
 		//add candidates back to the contour list
 		utility::merge(contours_,candidates);
 	}
-
-
 }
 void Worker::addBlobs(int sequence_number) {
 	//for every contour, create a new blob in blobs_

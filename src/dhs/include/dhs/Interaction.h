@@ -91,7 +91,8 @@ bool checkForBagExchange(BlobDescriptorDecoratedKBPtr owner, const BlobDescripto
 //returns true if reciever is near bag and owner is not near bag, and bag and receiver are visible
 bool checkForBagSteal(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDecoratedKBPtr bag, const BlobDescriptorDecoratedKBPtr receiver, InteractionStatePtr interaction);
 
-void print(Interactions interactions);
+void print(const Interactions& interactions);
+void cull(Interactions& interactions);
 
 }; /* namespace interaction */
 #endif /* INTERACTIONSTATE_H_ */
