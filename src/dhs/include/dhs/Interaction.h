@@ -86,8 +86,14 @@ typedef std::map<int,InteractionStatePtr> Interactions;
 void checkForInteractions(const BlobDescriptorDecoratedKBPtr first_blob, const std::vector<BlobPtr>& other_blobs, Interactions& interactions);
 //populates interaction if that type is detected
 bool checkForSinglePerson(const BlobDescriptorDecoratedKBPtr blob, InteractionStatePtr interaction);
+//returns true if the given blobs are meeting
 bool checkForTwoPeopleMeeting(const BlobDescriptorDecoratedKBPtr first_blob, const BlobDescriptorDecoratedKBPtr second_blob, InteractionStatePtr interaction);
+//returns true if the first blob belongs to the second blob and the second blob is not nearby
 bool checkForBagAbandoned(BlobDescriptorDecoratedKBPtr first_blob, const BlobDescriptorDecoratedKBPtr second_blob, InteractionStatePtr interaction);
+//returns true if receiver and owner is near bag, and all are visible
+bool checkForBagExchange(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDecoratedKBPtr bag, const BlobDescriptorDecoratedKBPtr receiver, InteractionStatePtr interaction);
+//returns true if reciever is near bag and owner is not near bag, and bag and receiver are visible
+bool checkForBagSteal(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDecoratedKBPtr bag, const BlobDescriptorDecoratedKBPtr receiver, InteractionStatePtr interaction);
 
 void print(Interactions interactions);
 

@@ -26,6 +26,7 @@
 #include <ros/ros.h>
 
 #include "dhs/BlobDescriptor.h"
+#include "dhs/BlobDescriptorDecorated.h"
 
 static const int kMaxCombineTimes(10);
 static const int NO_MEDIAN(-1);
@@ -513,11 +514,11 @@ bool isBagSized(const BlobDescriptorPtr& blob) {
 	//it is a bag
 	return blob->getLastRawBound().height/(200-blob->getLastDepth()) < 3;
 }
-void utility::assignBagOwner(const std::map<int,BlobDescriptorPtr>& blobs, BlobDescriptorDecoratedKBPtr bag) {
+void assignBagOwner(const std::map<int,BlobDescriptorDecoratedKBPtr>& blobs, BlobDescriptorDecoratedKBPtr bag) {
 	//find the closest blob which is not this blob
 	int index_of_closest_blob = -1;
 	int distance_to_closest_blob = INT_MAX;
-	for(std::map<int,BlobDescriptorPtr>::const_iterator blob_it = blobs.begin();
+	for(std::map<int,BlobDescriptorDecoratedKBPtr>::const_iterator blob_it = blobs.begin();
 		blob_it != blobs.end();
 		++blob_it) {
 
@@ -534,6 +535,9 @@ void utility::assignBagOwner(const std::map<int,BlobDescriptorPtr>& blobs, BlobD
 	else {
 		bag->set_owner(bag->Id());
 	}
+}
+double separation(const cv::Rect& first_bound, const cv::Rect& second_bound) {
+	return utility::distance( utility::Center(first_bound), utility::Center(second_bound) );
 }
 
 } // namespace utility

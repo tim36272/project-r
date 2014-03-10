@@ -41,16 +41,6 @@ void checkForInteractions(BlobDescriptorDecoratedKBPtr first_blob, const std::ve
 				continue;
 			}
 			/*
-			 * Bag interaction
-			 */
-			InteractionStatePtr bag_abandoned(new InteractionState);
-			if(checkForBagAbandoned(first_blob,*second_blob_it,bag_abandoned)) {
-				//This will either insert, or not if it already exists
-				std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(bag_abandoned->getHash(),bag_abandoned));
-				if(!inserted.second)
-					inserted.first->second->add_seen_at(first_blob->lastSeen());
-			}
-			/*
 			 * Two Person meeting
 			 */
 			InteractionStatePtr two_person_meeting(new InteractionState);
@@ -59,6 +49,40 @@ void checkForInteractions(BlobDescriptorDecoratedKBPtr first_blob, const std::ve
 				std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(two_person_meeting->getHash(),two_person_meeting));
 				if(!inserted.second)
 					inserted.first->second->add_seen_at(first_blob->lastSeen());
+			}
+			//things with bags
+			if(first_blob->bag()) {
+				const BlobDescriptorDecoratedKBPtr owner = other_blobs.at(first_blob->owner());
+				/*
+				 * Bag interaction
+				 */
+				InteractionStatePtr bag_abandoned(new InteractionState);
+				if(checkForBagAbandoned(owner,first_blob,bag_abandoned)) {
+					//This will either insert, or not if it already exists
+					std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(bag_abandoned->getHash(),bag_abandoned));
+					if(!inserted.second)
+						inserted.first->second->add_seen_at(first_blob->lastSeen());
+				}
+				/*
+				 * Bag Exchange
+				 */
+				InteractionStatePtr bag_exchange(new InteractionState);
+				if(checkForBagExchange(owner,first_blob,*second_blob_it,bag_exchange)) {
+					//This will either insert, or not if it already exists
+					std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(bag_exchange->getHash(),bag_exchange));
+					if(!inserted.second)
+						inserted.first->second->add_seen_at(first_blob->lastSeen());
+				}
+				/*
+				 * Bag Steal
+				 */
+				InteractionStatePtr bag_steal(new InteractionState);
+				if(checkForBagExchange(owner,first_blob,*second_blob_it,bag_steal)) {
+					//This will either insert, or not if it already exists
+					std::pair<Interactions::iterator,bool> inserted = interactions.insert(std::pair<int,InteractionStatePtr>(bag_steal->getHash(),bag_steal));
+					if(!inserted.second)
+						inserted.first->second->add_seen_at(first_blob->lastSeen());
+				}
 			}
 			++second_blob_it;
 		}
@@ -87,10 +111,8 @@ bool checkForTwoPeopleMeeting(const BlobDescriptorDecoratedKBPtr first_blob, con
 
 	//TODO: add depth checking
 	//check if they are close to eachother
-	int separation =  utility::distance(
-						utility::Center(first_blob->getLastFilteredBound()),
-						utility::Center(second_blob->getLastFilteredBound()));
-	int max_separation = first_blob->getLastFilteredBound().x + second_blob->getLastFilteredBound().x;
+	int separation =  utility::separation(first_blob->getLastFilteredBound(),second_blob->getLastFilteredBound());
+	int max_separation = utility::Center(first_blob->getLastFilteredBound()).x + utility::Center(second_blob->getLastFilteredBound()).x;
 
 	if(separation < max_separation) {
 		interaction->set_agent_1_id(first_blob->Id());
@@ -102,8 +124,70 @@ bool checkForTwoPeopleMeeting(const BlobDescriptorDecoratedKBPtr first_blob, con
 	}
 	return false;
 }
-bool checkForBagAbandoned(BlobDescriptorDecoratedKBPtr first_blob, const BlobDescriptorDecoratedKBPtr second_blob, InteractionStatePtr interaction) {
-	if()
+bool checkForBagAbandoned(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDecoratedKBPtr bag, InteractionStatePtr interaction) {
+	//check if they are close to each other
+	int separation =  utility::separation(bag->getLastFilteredBound(),owner->getLastFilteredBound());
+	int max_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(owner->getLastFilteredBound()).x;
+
+	if(separation > max_separation) {
+		interaction->set_agent_1_id(owner->Id());
+		interaction->set_agent_2_id(interaction::kNotSet);
+		interaction->set_bag_id(bag->Id());
+		interaction->add_seen_at(bag->lastSeen());
+		interaction->set_interaction(InteractionState::bag_abandon);
+		return true;
+	}
+	return false;
+}
+bool checkForBagExchange(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDecoratedKBPtr bag, const BlobDescriptorDecoratedKBPtr receiver, InteractionStatePtr interaction) {
+	//must all be visible
+	//allow 1 for update asynchronacy
+	int bag_last_seen = bag->lastSeen() - 1;
+	if(owner->lastSeen() < bag_last_seen || receiver->lastSeen() < bag_last_seen) return false;
+
+	//check if they are bag and owner are close
+	int bag_owner_separation =  utility::separation(bag->getLastFilteredBound(),owner->getLastFilteredBound());
+	int max_bag_owner_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(owner->getLastFilteredBound()).x;
+
+	//check if they are bag and receiver are close
+	int bag_receiver_separation =  utility::separation(bag->getLastFilteredBound(),receiver->getLastFilteredBound());
+	int max_bag_receiver_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(receiver->getLastFilteredBound()).x;
+
+	if( (bag_owner_separation < max_bag_owner_separation) && (bag_receiver_separation < max_bag_receiver_separation)) {
+		interaction->set_agent_1_id(owner->Id());
+		interaction->set_agent_2_id(owner->Id());
+		interaction->set_bag_id(bag->Id());
+		interaction->add_seen_at(bag->lastSeen());
+		interaction->set_interaction(InteractionState::bag_exchange);
+		return true;
+	}
+	return false;
+}
+
+bool checkForBagSteal(BlobDescriptorDecoratedKBPtr owner, const BlobDescriptorDecoratedKBPtr bag, const BlobDescriptorDecoratedKBPtr receiver, InteractionStatePtr interaction) {
+	//receiver must be visible
+	//allow 1 for update asynchronacy
+	int bag_last_seen = bag->lastSeen() - 1;
+	if(receiver->lastSeen() < bag_last_seen) return false;
+
+	//check if they are bag and owner are close
+	int bag_owner_separation =  utility::separation(bag->getLastFilteredBound(),owner->getLastFilteredBound());
+	int max_bag_owner_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(owner->getLastFilteredBound()).x;
+
+	//check if they are bag and receiver are close
+	int bag_receiver_separation =  utility::separation(bag->getLastFilteredBound(),receiver->getLastFilteredBound());
+	int max_bag_receiver_separation = utility::Center(bag->getLastFilteredBound()).x + utility::Center(receiver->getLastFilteredBound()).x;
+
+	if( (bag_owner_separation >
+	max_bag_owner_separation) && (bag_receiver_separation < max_bag_receiver_separation)) {
+		interaction->set_agent_1_id(owner->Id());
+		interaction->set_agent_2_id(owner->Id());
+		interaction->set_bag_id(bag->Id());
+		interaction->add_seen_at(bag->lastSeen());
+		interaction->set_interaction(InteractionState::bag_steal);
+		return true;
+	}
+	return false;
 }
 
 void print(Interactions interactions) {

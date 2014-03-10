@@ -216,6 +216,7 @@ public:
 		return *filtered_bounds_.rbegin();
 	}
 	void set_bag() {bag_=true;}
+	//defines if this blob is a bag
 	bool bag() {return bag_;}
 	void set_owner(int owner) {owner_ = owner;}
 	int owner() { return owner_; }
