@@ -174,7 +174,7 @@ void Worker::updateBlobs(int sequence_number) {
 		candidates.erase(max_at);
 
 		//add candidates back to the contour list
-		utility::merge(contours_,candidates);
+		//utility::merge(contours_,candidates);
 	}
 }
 void Worker::addBlobs(int sequence_number) {

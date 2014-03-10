@@ -174,5 +174,3 @@ target_link_libraries(bag_interaction ${catkin_LIBRARIES})
 #add_executable (interface executable/interface.cpp)
 #target_link_libraries(interface ${catkin_LIBRARIES})
 
-#add_executable (BagOnPersonProcessor executable/BagOnPersonProcessor.cpp)
-#target_link_libraries(BagOnPersonProcessor ${catkin_LIBRARIES})
