@@ -511,7 +511,8 @@ bool isBagSized(const BlobDescriptorPtr& blob) {
 	//(temporary) hack: if the blob satisfies
 	//(height)/(200-depth) < 3.0
 	//it is a bag
-	return blob->getLastRawBound().height/(200-blob->getLastDepth()) < 3;
+	ROS_INFO_STREAM("Bag size equation: "<<(float)blob->getLastRawBound().height/(200-blob->getLastDepth())<<" < 3");
+	return ((double)blob->getLastRawBound().height/(200-blob->getLastDepth())) < 3;
 }
 void assignBagOwner(const std::map<int,BlobDescriptorDecoratedKBMTPtr>& blobs, BlobDescriptorDecoratedKBMTPtr bag) {
 	//find the closest blob which is not this blob
@@ -528,10 +529,10 @@ void assignBagOwner(const std::map<int,BlobDescriptorDecoratedKBMTPtr>& blobs, B
 		}
 	}
 	if(index_of_closest_blob!=-1) {
-		//the owner is not visible, assign the bag owner to itself
 		bag->set_owner(index_of_closest_blob);
 	}
 	else {
+		//the owner is not visible, assign the bag owner to itself
 		bag->set_owner(bag->Id());
 	}
 }

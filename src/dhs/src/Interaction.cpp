@@ -20,7 +20,6 @@
 
 namespace interaction {
 void checkForInteractions(const BlobPtr& first_blob, const std::vector<BlobPtr>& other_blobs, Interactions& interactions) {
-	if(!first_blob->bag()) {
 		/*
 		 * Single Person
 		 */
@@ -86,10 +85,6 @@ void checkForInteractions(const BlobPtr& first_blob, const std::vector<BlobPtr>&
 			}
 			++second_blob_it;
 		}
-	}
-	else { //it's a bag
-
-	}
 }
 
 bool checkForSinglePerson(const BlobDescriptorDecoratedKBPtr blob, interaction::InteractionStatePtr interaction) {
@@ -195,11 +190,32 @@ void print(const Interactions& interactions) {
 	std::cout<<"Blob history: ";
 	interaction::Interactions::const_iterator interaction_it = interactions.begin();
 	while(interaction_it != interactions.end()) {
+		std::string interaction_type;
+		switch(interaction_it->second->interaction_) {
+		case 0:
+			interaction_type = "SP";
+			break;
+		case 1:
+			interaction_type = "BA";
+			break;
+		case 2:
+			interaction_type = "BS";
+			break;
+		case 3:
+			interaction_type = "BE";
+			break;
+		case 4:
+			interaction_type = "TP";
+			break;
+		default:
+			assert(false);
+			break;
+		}
 		std::cout<<"Blobs: "
 				 <<interaction_it->second->agent_1_id_<<","
 				 <<interaction_it->second->agent_2_id_
 				 <<" are having interaction type "
-				 <<interaction_it->second->interaction_<<": ";
+				 <<interaction_type<<": ";
 		std::vector<std::pair<int,int> >::const_iterator event_it = interaction_it->second->instances_.begin();
 		while(event_it!=interaction_it->second->instances_.end()) {
 			std::cout<<"("<<event_it->first<<","<<event_it->second<<")";
