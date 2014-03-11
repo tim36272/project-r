@@ -142,6 +142,7 @@ void Worker::updateBlobs(int sequence_number) {
 	BlobPtrVectorIt blob_cursor = blobs_.begin();
 
 	//the number of blobs should be small
+	cv::Mat temp_contours(cv::Size(640,480),CV_8UC3,cv::Scalar::all(0));
 	for(;blob_cursor!=blobs_.end();blob_cursor++) {
 		ContourList candidates;
 		utility::getCandidates((*blob_cursor)->getLastFilteredBound(),contours_,&candidates);
@@ -158,6 +159,11 @@ void Worker::updateBlobs(int sequence_number) {
 		if(candidates.size() > 1) {
 			utility::CombineContours(rgb_.size(),&candidates);
 		}
+		//diagnostic show contours
+		for(int i=0;i<candidates.size();i++) {
+			cv::drawContours(temp_contours,candidates,i,cv::Scalar(rand()%256,rand()%256,rand()%256),1);
+		}
+
 
 		//find the largest candidate
 		ContourListIt max_at = utility::findLargestContour(candidates);
@@ -174,8 +180,9 @@ void Worker::updateBlobs(int sequence_number) {
 		candidates.erase(max_at);
 
 		//add candidates back to the contour list
-		//utility::merge(contours_,candidates);
+		utility::merge(contours_,candidates);
 	}
+	cv::imshow("All candidate contours",temp_contours);
 }
 void Worker::addBlobs(int sequence_number) {
 	//for every contour, create a new blob in blobs_
